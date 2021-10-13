@@ -79,6 +79,8 @@ using namespace std;
 
 #include "log.h"
 
+#include "generate_errors.h"
+
 #ifdef VPR_USE_TBB
 #    include <tbb/task_scheduler_init.h>
 
@@ -311,6 +313,18 @@ bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
     vpr_create_device(vpr_setup, arch);
 
     vpr_init_graphics(vpr_setup, arch);
+
+    //Error-generation
+    //set to false if old error file should be used
+    bool generate_errors = true;
+    if (generate_errors) {
+        //fill in given probabilities
+        double sa1 = 0.01;
+        double sa0 = 0.01;
+        double sau = 0.01;
+        //generate errors for device of given size
+        generate_device_faults(sa1, sa0, sau);
+    }
 
     { //Place
         bool place_success = vpr_place_flow(vpr_setup, arch);
