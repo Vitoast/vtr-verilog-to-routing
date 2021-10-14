@@ -2,7 +2,7 @@
 // Created by Tobias Steinbach
 //
 
-#include <generate_errors.h>
+#include "generate_errors.h"
 
 
 void generate_device_faults(double sa0,
@@ -13,10 +13,9 @@ void generate_device_faults(double sa0,
     double r;
 
     //open or create error file
-    data.open("device_faults.txt");
+    data.open("device_faults.txt", ofstream::out | ofstream::trunc);
     if(!data) {
-        cerr << "Fault file could not be created." << endl;
-        exit(1);
+        VTR_LOG("Error file for architecture could not be created.\n");
     }
 
     else {
@@ -88,8 +87,10 @@ void generate_device_faults(double sa0,
                 }
 
             }
-            //seperate CLBs
+            //separate CLBs
             data << endl;
         }
     }
+
+    data.close();
 }

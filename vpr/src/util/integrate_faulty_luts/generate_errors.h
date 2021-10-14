@@ -10,7 +10,6 @@
 #define VTR_VERILOG_TO_ROUTING_GENERATE_ERRORS_H
 
 #include <iostream>
-using std::cerr;
 using std::endl;
 #include <fstream>
 using std::ofstream;

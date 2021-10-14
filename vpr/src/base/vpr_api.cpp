@@ -5,6 +5,8 @@
  *
  * Author: Jason Luu
  * June 21, 2012
+ * Modifications by: Tobias Steinbach
+ * October 16, 2021
  */
 
 #include <cstdio>
@@ -79,7 +81,9 @@ using namespace std;
 
 #include "log.h"
 
+//added files for integrating LUT-errors
 #include "generate_errors.h"
+#include "check_compatibility.h"
 
 #ifdef VPR_USE_TBB
 #    include <tbb/task_scheduler_init.h>
@@ -314,6 +318,7 @@ bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
 
     vpr_init_graphics(vpr_setup, arch);
 
+    //Begin modification for LUT-error integration
     //Error-generation
     //set to false if old error file should be used
     bool generate_errors = true;
@@ -325,6 +330,13 @@ bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
         //generate errors for device of given size
         generate_device_faults(sa1, sa0, sau);
     }
+
+    //Create compatibility matrix for errors
+    bool create_comp = false;
+    if (create_comp) {
+        create_compatibility_matrix();
+    }
+    //End modification for LUT-error integration
 
     { //Place
         bool place_success = vpr_place_flow(vpr_setup, arch);
