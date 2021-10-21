@@ -92,6 +92,8 @@
 #include "log.h"
 #include "iostream"
 
+#include "generate_errors.h"
+
 #ifdef VPR_USE_TBB
 #    include <tbb/task_scheduler_init.h>
 
@@ -375,8 +377,17 @@ bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
     }
 
     vpr_create_device(vpr_setup, arch);
-
     vpr_init_graphics(vpr_setup, arch);
+
+    //Modified: added generation of faulty-LUT file
+    bool generate_errors = true;
+    if(generate_errors) {
+        double sa1 = 0.01;
+        double sa0 = 0.01;
+        double sau = 0.01;
+        generate_device_faults(sa0, sa1, sau);
+    }
+
     { //Place
         bool place_success = vpr_place_flow(vpr_setup, arch);
 
