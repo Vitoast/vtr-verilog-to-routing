@@ -12,6 +12,8 @@
 #include <vector>
 
 #include "vtr_log.h"
+#include "vpr_context.h"
+#include "globals.h"
 
 using std::ofstream;
 using std::ifstream;
@@ -20,12 +22,6 @@ using std::ifstream;
  * Writes the computed compatibility information of CLBs and packed functions to a file.
  */
 void create_compatibility_matrix();
-
-/*
- * Checks the compatibility of a given CLB with all given packed functions.
- * Stores result in char* clb.
- */
-std::vector<bool> check_compatibility_clb(char* clb, int num_clbs, int luts_per_clb, bool* compressable);
 
 /*
  * Writes the compatibility information for one CLB into the file.

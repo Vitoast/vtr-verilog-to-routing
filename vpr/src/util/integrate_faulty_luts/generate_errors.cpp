@@ -1,7 +1,20 @@
 //
 // Created by Tobias Steinbach
 //
+#include <iostream>
+using std::endl;
+#include <fstream>
+using std::ofstream;
+#include <cstdlib>
+#include <random>
 
+#include "vpr_utils.h"
+#include "vpr_context.h"
+#include "physical_types.h"
+#include "device_grid.h"
+#include "read_options.h"
+#include "globals.h"
+#include "vtr_log.h"
 #include "generate_errors.h"
 
 

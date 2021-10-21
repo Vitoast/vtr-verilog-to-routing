@@ -4,17 +4,47 @@
 
 #include "check_compatibility.h"
 
-std::vector<bool> check_compatibility_clb(char* clb, int num_clbs, int luts_per_clb, bool* compressable) {
+/*
+ * Checks the compatibility of a given CLB with all given packed functions.
+ * Stores result in char* clb.
+ */
+std::vector<bool> check_compatibility(char* clb, int num_clbs, int luts_per_clb, bool* compressable);
+
+/*
+ * Checks compatibility for a single clb.
+ */
+bool check_clb(char clb, int index_clb);
+
+std::vector<bool> check_compatibility(char* clb, int num_clbs, int luts_per_clb, bool* compressible) {
+    //declare necessary variables
     int num_fcts = 0;
     std::vector<bool> results;
-
+    *compressible = true;
+    auto it = results.begin();
+    bool compatible = false;
+    //iterate over all CLBs and check each compatibility
+    for (int i = 0; i < num_clbs; ++i) {
+        it = results.begin();
+        compatible = check_clb(clb[i], i);
+        //if one CLB is not compatible, this line is not compressible
+        if(!compatible)
+            *compressible = false;
+        results.insert(it+i, compatible);
+    }
     return results;
 }
 
-void print_bits_to_file(std::vector<bool> result, int num_clbs, ofstream& comp_data, bool* compressable) {
+bool check_clb(char clb, int index_clb) {
+    ClusteringContext cluster_ctx = g_vpr_ctx.clustering();
+    ClusteredNetlist cluster_nlist = cluster_ctx.clb_nlist;
+
+    return true;
+}
+
+void print_bits_to_file(std::vector<bool> result, int num_clbs, ofstream& comp_data, bool* compressible) {
     char write = 0;
     //if the whole line is true, a compress-symbol is inserted
-    if(compressable) {
+    if(compressible) {
         write = -1;
         comp_data << write;
     }
@@ -98,8 +128,8 @@ void create_compatibility_matrix() {
                         ++count_luts;
                     }
                 }
-                bool compressable = true;
-                print_bits_to_file(check_compatibility_clb(clb, num_clbs, num_luts_per_clb, &compressable), num_clbs, comp_data, &compressable);
+                bool compressible = true;
+                print_bits_to_file(check_compatibility(clb, num_clbs, num_luts_per_clb, &compressible), num_clbs, comp_data, &compressible);
             }
         }
         //free boolean array

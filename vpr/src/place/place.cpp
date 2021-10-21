@@ -2,6 +2,12 @@
 #include <cmath>
 #include <memory>
 #include <fstream>
+//added for error acknowledgement =>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+//<=
 using namespace std;
 
 #include "vtr_assert.h"
@@ -133,6 +139,14 @@ static vtr::vector<ClusterNetId, double> net_cost, temp_net_cost;
 
 static t_pl_loc** legal_pos = nullptr; /* [0..device_ctx.num_block_types-1][0..type_tsize - 1] */
 static int* num_legal_pos = nullptr;   /* [0..num_legal_pos-1] */
+
+//True, if errors in LUTs should be taken into account at place
+static bool faulty_luts = true;
+
+/* Holds the information, which LUT is faulty and what kind of fault it is.
+ * Fault-types: 0 -> Fault-free, 1 -> Stuck-At-1, 2 -> Stuck-At-0, 3 -> Stuck-At-Undefined (RRAM-specific)*/
+static char** lut_errors = nullptr;
+static int* num_clbs;
 
 /* [0...cluster_ctx.clb_nlist.nets().size()-1]                                               *
  * A flag array to indicate whether the specific bounding box has been updated   *
@@ -277,7 +291,9 @@ static void free_fast_cost_update();
 
 static void alloc_legal_placements();
 static void load_legal_placements();
+static void alloc_and_load_error_matrix();
 
+static void free_lut_errors();
 static void free_legal_placements();
 
 static int check_macro_can_be_placed(int imacro, int itype, t_pl_loc head_pos);
@@ -825,6 +841,7 @@ void try_place(t_placer_opts placer_opts,
         free_lookups_and_criticalities();
     }
 
+    free_lut_errors();
     free_try_swap_arrays();
 }
 
@@ -2003,6 +2020,7 @@ static void update_td_delta_costs(const PlaceDelayModel& delay_model, const Clus
     }
 }
 
+//TODO: add error comp check here
 static bool find_to(t_type_ptr type, float rlim, const t_pl_loc from, t_pl_loc& to) {
     //Finds a legal swap to location for the given type, starting from 'x_from' and 'y_from'
     //
@@ -2413,7 +2431,9 @@ static void alloc_and_load_placement_structs(float place_cost_exp,
     size_t num_nets = cluster_ctx.clb_nlist.nets().size();
 
     init_placement_context();
-
+    //load LUT-errors from file
+    if(faulty_luts)
+        alloc_and_load_error_matrix();
     alloc_legal_placements();
     load_legal_placements();
 
@@ -3075,6 +3095,42 @@ static void load_legal_placements() {
     free(index);
 }
 
+/*
+ * Loads the information about the LUT-errors from file "device_faults.txt"
+ */
+static void alloc_and_load_error_matrix() {
+    //stuff for reading error file
+    ifstream error_data("device_faults.txt");
+    char cur_cell;
+    int num_luts_per_clb = 0;
+    int num_cells_per_lut = 64;
+    num_clbs = (int*) malloc(sizeof(int));
+    //read general clb infos from file
+    std::string line;
+    //read generic header
+    std::getline(error_data, line);
+    //read number of clbs in second line
+    std::getline(error_data, line);
+    *num_clbs = stoi(line);
+    // read number of luts per clb form third line
+    std::getline(error_data, line);
+    num_luts_per_clb = stoi(line);
+    //allocate array for fault data
+    lut_errors = (char **) malloc((*num_clbs) * sizeof(char));
+    //read errors for one clb and process it
+    for (int i = 0; i < (*num_clbs); ++i) {
+        //allocate data for one clb
+        lut_errors[i] = (char *) malloc(num_luts_per_clb*num_cells_per_lut * sizeof(char));
+        int j = 0;
+        std::istringstream str(line);
+        //read clb char/cell by char/cell
+        while(!(str >> cur_cell)) {
+            lut_errors[i][j] = cur_cell;
+            ++j;
+        }
+    }
+}
+
 static void free_legal_placements() {
     auto& device_ctx = g_vpr_ctx.device();
 
@@ -3085,6 +3141,15 @@ static void free_legal_placements() {
     free(num_legal_pos);
 }
 
+static void free_lut_errors() {
+    for (int i = 0; i < (*num_clbs); ++i) {
+        delete[] lut_errors[i];
+    }
+    delete[] lut_errors; /* Free the error list */
+    free(num_clbs);
+}
+
+//TODO: add error comp check here
 static int check_macro_can_be_placed(int imacro, int itype, t_pl_loc head_pos) {
     auto& device_ctx = g_vpr_ctx.device();
     auto& place_ctx = g_vpr_ctx.placement();
@@ -3281,6 +3346,7 @@ static void initial_placement_blocks(int* free_locations, enum e_pad_loc_type pa
     }
 }
 
+//TODO: add error comp check here
 static void initial_placement_location(const int* free_locations, ClusterBlockId blk_id, int& ipos, t_pl_loc& to) {
     auto& cluster_ctx = g_vpr_ctx.clustering();
 

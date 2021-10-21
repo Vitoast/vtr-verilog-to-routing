@@ -83,7 +83,6 @@ using namespace std;
 
 //added files for integrating LUT-errors
 #include "generate_errors.h"
-#include "check_compatibility.h"
 
 #ifdef VPR_USE_TBB
 #    include <tbb/task_scheduler_init.h>
@@ -329,12 +328,6 @@ bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
         double sau = 0.01;
         //generate errors for device of given size
         generate_device_faults(sa1, sa0, sau);
-    }
-
-    //Create compatibility matrix for errors
-    bool create_comp = false;
-    if (create_comp) {
-        create_compatibility_matrix();
     }
     //End modification for LUT-error integration
 
