@@ -191,6 +191,7 @@ void propagate_place_constraints() {
     }
 }
 
+//TODO: MODIFY, add test for error comp
 /*returns true if location is compatible with floorplanning constraints, false if not*/
 /*
  * Even if the block passed in is from a macro, it will work because of the constraints

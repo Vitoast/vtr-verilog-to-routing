@@ -109,6 +109,7 @@ static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc he
             }
         }
 
+        // TODO:MODIFY
         // Check whether the location could accept block of this type
         // Then check whether the location could still accommodate more blocks
         // Also check whether the member position is valid, that is the member's location

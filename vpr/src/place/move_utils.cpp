@@ -761,6 +761,7 @@ void compressed_grid_to_loc(t_logical_block_type_ptr blk_type, int cx, int cy, t
     to_loc.sub_tile = compatible_sub_tiles[vtr::irand((int)compatible_sub_tiles.size() - 1)];
 }
 
+//TODO: MODIFY, add comp check
 bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type, int min_cx, int max_cx, int min_cy, int max_cy, int delta_cx, int cx_from, int cy_from, int& cx_to, int& cy_to, bool is_median) {
     const auto& compressed_block_grid = g_vpr_ctx.placement().compressed_block_grids[type->index];
 
