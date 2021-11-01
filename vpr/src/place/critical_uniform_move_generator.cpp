@@ -2,7 +2,8 @@
 #include "globals.h"
 #include "place_constraints.h"
 
-e_create_move CriticalUniformMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& /*placer_opts*/, const PlacerCriticalities* /*criticalities*/) {
+//Modified: added handover of LUT error matrix
+e_create_move CriticalUniformMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& /*placer_opts*/, const PlacerCriticalities* /*criticalities*/, std::map<int, Change_Entry>* map, char** lut_errors) {
     auto& place_ctx = g_vpr_ctx.placement();
     auto& cluster_ctx = g_vpr_ctx.clustering();
     auto& place_move_ctx = g_placer_ctx.move();
@@ -30,7 +31,7 @@ e_create_move CriticalUniformMoveGenerator::propose_move(t_pl_blocks_to_be_moved
 
     t_pl_loc to;
 
-    if (!find_to_loc_uniform(cluster_from_type, rlim, from, to)) {
+    if (!find_to_loc_uniform(cluster_from_type, rlim, from, to, map, lut_errors)) {
         return e_create_move::ABORT;
     }
 

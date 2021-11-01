@@ -4,7 +4,8 @@
 #include "math.h"
 #include "place_constraints.h"
 
-e_create_move FeasibleRegionMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities) {
+//Modified: added handover of LUT error matrix
+e_create_move FeasibleRegionMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities, std::map<int, Change_Entry>* map, char** lut_errors) {
     auto& place_ctx = g_vpr_ctx.placement();
     auto& cluster_ctx = g_vpr_ctx.clustering();
     auto& place_move_ctx = g_placer_ctx.mutable_move();
@@ -112,14 +113,14 @@ e_create_move FeasibleRegionMoveGenerator::propose_move(t_pl_blocks_to_be_moved&
     range_limiters.first_rlim = place_move_ctx.first_rlim;
 
     // Try to find a legal location inside the feasible region
-    if (!find_to_loc_median(cluster_from_type, from, &FR_coords, to)) {
+    if (!find_to_loc_median(cluster_from_type, from, &FR_coords, to, map, lut_errors)) {
         /** If there is no legal location in the feasible region, calculate the center of the FR and try to find a legal location 
          *  in a range around this center.
          */
         t_pl_loc center;
         center.x = (FR_coords.xmin + FR_coords.xmax) / 2;
         center.y = (FR_coords.ymin + FR_coords.ymax) / 2;
-        if (!find_to_loc_centroid(cluster_from_type, from, center, range_limiters, to))
+        if (!find_to_loc_centroid(cluster_from_type, from, center, range_limiters, to, map, lut_errors))
             return e_create_move::ABORT;
     }
 

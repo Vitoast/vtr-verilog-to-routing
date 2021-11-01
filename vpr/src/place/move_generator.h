@@ -5,6 +5,7 @@
 #include "timing_place.h"
 #include "directed_moves_util.h"
 #include "placer_globals.h"
+#include "place_constraints.h"
 
 #include <limits>
 
@@ -55,7 +56,7 @@ class MoveGenerator {
      *  @param placer_opts: all the placer options
      *  @param criticalities: the placer criticalities, useful for timing directed moves
      */
-    virtual e_create_move propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities) = 0;
+    virtual e_create_move propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities, std::map<int, Change_Entry>* map, char** lut_errors) = 0;
 
     /**
      * @brief Recieves feedback about the outcome of the previously proposed move

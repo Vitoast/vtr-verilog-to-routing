@@ -4,7 +4,8 @@
 #include "directed_moves_util.h"
 #include "place_constraints.h"
 
-e_create_move CentroidMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* /*criticalities*/) {
+//Modified: added handover of LUT error matrix
+e_create_move CentroidMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* /*criticalities*/, std::map<int, Change_Entry>* map, char** lut_errors) {
     /* Pick a random block to be swapped with another random block.   */
     ClusterBlockId b_from = pick_from_block();
     if (!b_from) {
@@ -32,7 +33,7 @@ e_create_move CentroidMoveGenerator::propose_move(t_pl_blocks_to_be_moved& block
     calculate_centroid_loc(b_from, false, centroid, NULL);
 
     /* Find a location near the weighted centroid_loc */
-    if (!find_to_loc_centroid(cluster_from_type, from, centroid, range_limiters, to)) {
+    if (!find_to_loc_centroid(cluster_from_type, from, centroid, range_limiters, to, map, lut_errors)) {
         return e_create_move::ABORT;
     }
 

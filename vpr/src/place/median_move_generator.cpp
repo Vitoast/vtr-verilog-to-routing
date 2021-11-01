@@ -8,7 +8,8 @@ static bool get_bb_incrementally(ClusterNetId net_id, t_bb* bb_coord_new, int xo
 
 static void get_bb_from_scratch_excluding_block(ClusterNetId net_id, t_bb* bb_coord_new, ClusterBlockId block_id, bool& skip_net);
 
-e_create_move MedianMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* /*criticalities*/) {
+//Modified: added handover of LUT error matrix
+e_create_move MedianMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* /*criticalities*/, std::map<int, Change_Entry>* map, char** lut_errors) {
     auto& place_ctx = g_vpr_ctx.placement();
     auto& cluster_ctx = g_vpr_ctx.clustering();
     auto& device_ctx = g_vpr_ctx.device();
@@ -119,7 +120,7 @@ e_create_move MedianMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_
     t_pl_loc median_point;
     median_point.x = (limit_coords.xmin + limit_coords.xmax) / 2;
     median_point.y = (limit_coords.ymin + limit_coords.ymax) / 2;
-    if (!find_to_loc_centroid(cluster_from_type, from, median_point, range_limiters, to))
+    if (!find_to_loc_centroid(cluster_from_type, from, median_point, range_limiters, to, map, lut_errors))
         return e_create_move::ABORT;
 
     e_create_move create_move = ::create_move(blocks_affected, b_from, to);

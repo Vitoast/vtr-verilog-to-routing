@@ -529,11 +529,13 @@ ClusterBlockId pick_from_block() {
     //No movable blocks found
     return ClusterBlockId::INVALID();
 }
-//TODO: MODIFY, hand change map and error matrix over
+
+//Modified: added handover of LUT error matrix
 bool find_to_loc_uniform(t_logical_block_type_ptr type,
                          float rlim,
                          const t_pl_loc from,
-                         t_pl_loc& to) {
+                         t_pl_loc& to,
+                         std::map<int, Change_Entry>* map, char** lut_errors) {
     //Finds a legal swap to location for the given type, starting from 'from.x' and 'from.y'
     //
     //Note that the range limit (rlim) is applied in a logical sense (i.e. 'compressed' grid space consisting
@@ -567,7 +569,7 @@ bool find_to_loc_uniform(t_logical_block_type_ptr type,
     int cy_to = OPEN;
     bool legal = false;
 
-    legal = find_compatible_compressed_loc_in_range(type, min_cx, max_cx, min_cy, max_cy, delta_cx, cx_from, cy_from, cx_to, cy_to, false);
+    legal = find_compatible_compressed_loc_in_range(type, min_cx, max_cx, min_cy, max_cy, delta_cx, cx_from, cy_from, cx_to, cy_to, false, map, lut_errors);
 
     if (!legal) {
         //No valid position found
@@ -599,11 +601,12 @@ void set_placer_breakpoint_reached(bool flag) {
     f_placer_breakpoint_reached = flag;
 }
 
-//TODO: MODIFY, hand change map and error matrix over
+//Modified: added handover of LUT error matrix
 bool find_to_loc_median(t_logical_block_type_ptr blk_type,
                         const t_pl_loc& from_loc,
                         const t_bb* limit_coords,
-                        t_pl_loc& to_loc) {
+                        t_pl_loc& to_loc,
+                        std::map<int, Change_Entry>* map, char** lut_errors) {
     const auto& compressed_block_grid = g_vpr_ctx.placement().compressed_block_grids[blk_type->index];
 
     //Determine the coordinates in the compressed grid space of the current block
@@ -632,7 +635,7 @@ bool find_to_loc_median(t_logical_block_type_ptr blk_type,
     int cy_to = OPEN;
     bool legal = false;
 
-    legal = find_compatible_compressed_loc_in_range(blk_type, min_cx, max_cx, min_cy, max_cy, delta_cx, cx_from, cy_from, cx_to, cy_to, true);
+    legal = find_compatible_compressed_loc_in_range(blk_type, min_cx, max_cx, min_cy, max_cy, delta_cx, cx_from, cy_from, cx_to, cy_to, true, map, lut_errors);
 
     if (!legal) {
         //No valid position found
@@ -655,12 +658,13 @@ bool find_to_loc_median(t_logical_block_type_ptr blk_type,
     return true;
 }
 
-//TODO: MODIFY, hand change map and error matrix over
+//Modified: added handover of LUT error matrix
 bool find_to_loc_centroid(t_logical_block_type_ptr blk_type,
                           const t_pl_loc& from_loc,
                           const t_pl_loc& centroid,
                           const t_range_limiters& range_limiters,
-                          t_pl_loc& to_loc) {
+                          t_pl_loc& to_loc,
+                          std::map<int, Change_Entry>* map, char** lut_errors) {
     //Retrieve the compressed block grid for this block type
     const auto& compressed_block_grid = g_vpr_ctx.placement().compressed_block_grids[blk_type->index];
 
@@ -710,7 +714,7 @@ bool find_to_loc_centroid(t_logical_block_type_ptr blk_type,
     int cy_to = OPEN;
     bool legal = false;
 
-    legal = find_compatible_compressed_loc_in_range(blk_type, min_cx, max_cx, min_cy, max_cy, delta_cx, cx_from, cy_from, cx_to, cy_to, false);
+    legal = find_compatible_compressed_loc_in_range(blk_type, min_cx, max_cx, min_cy, max_cy, delta_cx, cx_from, cy_from, cx_to, cy_to, false, map, lut_errors);
 
     if (!legal) {
         //No valid position found
@@ -764,8 +768,8 @@ void compressed_grid_to_loc(t_logical_block_type_ptr blk_type, int cx, int cy, t
     to_loc.sub_tile = compatible_sub_tiles[vtr::irand((int)compatible_sub_tiles.size() - 1)];
 }
 
-//TODO: MODIFY, hand change map and error matrix over
-bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type, int min_cx, int max_cx, int min_cy, int max_cy, int delta_cx, int cx_from, int cy_from, int& cx_to, int& cy_to, bool is_median) {
+//Modified: added handover of LUT error matrix
+bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type, int min_cx, int max_cx, int min_cy, int max_cy, int delta_cx, int cx_from, int cy_from, int& cx_to, int& cy_to, bool is_median, std::map<int, Change_Entry>* map, char** lut_errors) {
     const auto& compressed_block_grid = g_vpr_ctx.placement().compressed_block_grids[type->index];
 
     std::unordered_set<int> tried_cx_to;
@@ -846,7 +850,7 @@ bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type, int 
                 continue; //Same from/to location -- try again for new y-position
             } else {
 
-                legal = true;//check_compatibility_clb(map, lut_errors, blk_id, loc);
+                legal = check_compatibility_clb(map, lut_errors, blk_id, loc);
             }
         }
     }

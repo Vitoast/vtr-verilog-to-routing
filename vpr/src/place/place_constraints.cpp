@@ -452,6 +452,8 @@ int get_floorplan_score(ClusterBlockId blk_id, PartitionRegion& pr, t_logical_bl
 
 //TODO:fill
 bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc) {
+    //clear map
+    (*map).clear();
 
     return true;
 }

@@ -1365,6 +1365,7 @@ static e_move_result try_swap(const t_annealing_state* state,
     }
 
     e_create_move create_move_outcome;
+    std::map<int, Change_Entry> map;
 
     //When manual move toggle button is active, the manual move window asks the user for input.
     if (manual_move_enabled) {
@@ -1374,7 +1375,7 @@ static e_move_result try_swap(const t_annealing_state* state,
     } else {
         //Generate a new move (perturbation) used to explore the space of possible placements
         //TODO: init and hand over change map
-        create_move_outcome = move_generator.propose_move(blocks_affected, move_type, rlim, placer_opts, criticalities);
+        create_move_outcome = move_generator.propose_move(blocks_affected, move_type, rlim, placer_opts, criticalities, &map, lut_errors);
     }
 
     ++move_type_stat.num_moves[(int)move_type];
@@ -1408,7 +1409,7 @@ static e_move_result try_swap(const t_annealing_state* state,
 
         /* Update the block positions */
         //TODO: Add permutation with change map
-        apply_move_blocks(blocks_affected);
+        apply_move_blocks(blocks_affected, &map);
 
         //Find all the nets affected by this swap and update the wiring costs.
         //This cost value doesn't depend on the timing info.
