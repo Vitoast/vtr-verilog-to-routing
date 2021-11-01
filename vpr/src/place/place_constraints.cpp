@@ -12,15 +12,19 @@
 #include "place_constraints.h"
 #include "place_util.h"
 
-/*checks that each block's location is compatible with its floorplanning constraints if it has any*/
-int check_placement_floorplanning() {
+/*checks that each block's location is compatible with its floorplanning constraints if it has any
+ *
+ * Modified: added handover of LUT error matrix
+ * */
+int check_placement_floorplanning(char** lut_errors) {
     int error = 0;
     auto& cluster_ctx = g_vpr_ctx.clustering();
     auto& place_ctx = g_vpr_ctx.placement();
 
     for (auto blk_id : cluster_ctx.clb_nlist.blocks()) {
         auto loc = place_ctx.block_locs[blk_id].loc;
-        if (!cluster_floorplanning_legal(blk_id, loc)) {
+        std::map<int, Change_Entry> map;
+        if (!cluster_floorplanning_legal(blk_id, loc, &map, lut_errors)) {
             error++;
             VTR_LOG_ERROR("Block %zu is not in correct floorplanning region.\n", size_t(blk_id));
         }
@@ -191,13 +195,14 @@ void propagate_place_constraints() {
     }
 }
 
-//TODO: MODIFY, add test for error comp
 /*returns true if location is compatible with floorplanning constraints, false if not*/
 /*
  * Even if the block passed in is from a macro, it will work because of the constraints
  * propagation that was done during initial placement.
+ *
+ * Modified: added handover of LUT error matrix
  */
-bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc) {
+bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc, std::map<int, Change_Entry>* map, char** lut_errors) {
     auto& floorplanning_ctx = g_vpr_ctx.floorplanning();
 
     bool floorplanning_good = false;
@@ -206,7 +211,7 @@ bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc) {
 
     if (!cluster_constrained) {
         //not constrained so will not have floorplanning issues
-        floorplanning_good = true;
+        floorplanning_good = check_compatibility_clb(map, lut_errors, blk_id, loc);
     } else {
         PartitionRegion pr = floorplanning_ctx.cluster_constraints[blk_id];
         bool in_pr = pr.is_loc_in_part_reg(loc);
@@ -214,7 +219,7 @@ bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc) {
         //if location is in partitionregion, floorplanning is respected
         //if not it is not
         if (in_pr) {
-            floorplanning_good = true;
+            floorplanning_good = check_compatibility_clb(map, lut_errors, blk_id, loc);
         } else {
 #ifdef VERBOSE
             VTR_LOG("Block %zu did not pass cluster_floorplanning_check \n", size_t(blk_id));
@@ -443,4 +448,15 @@ int get_floorplan_score(ClusterBlockId blk_id, PartitionRegion& pr, t_logical_bl
     int total_type_tiles = grid_tiles.total_type_tiles(block_type);
 
     return total_type_tiles - num_pr_tiles;
+}
+
+//TODO:fill
+bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc) {
+
+    return true;
+}
+
+std::string check_compatibility_lut(const char* error_line) {
+
+    return "0";
 }

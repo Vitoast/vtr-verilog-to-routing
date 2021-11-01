@@ -31,11 +31,11 @@ static std::vector<std::vector<std::vector<t_pl_loc>>> legal_pos; /* [0..device_
 
 static int get_free_sub_tile(std::vector<std::vector<int>>& free_locations, int itype, std::vector<int> possible_sub_tiles);
 
-static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc head_pos);
-static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_macro);
-static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<std::vector<int>>& free_locations, const std::vector<t_pl_macro>& sorted_macros);
+static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc head_pos, char** lut_errors);
+static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_macro, char** lut_errors);
+static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<std::vector<int>>& free_locations, const std::vector<t_pl_macro>& sorted_macros, char** lut_errors);
 
-static void initial_placement_blocks(std::vector<std::vector<int>>& free_locations, enum e_pad_loc_type pad_loc_type, const std::vector<ClusterBlockId>& sorted_blocks);
+static void initial_placement_blocks(std::vector<std::vector<int>>& free_locations, enum e_pad_loc_type pad_loc_type, const std::vector<ClusterBlockId>& sorted_blocks, char** lut_errors);
 
 static t_physical_tile_type_ptr pick_placement_type(t_logical_block_type_ptr logical_block,
                                                     int num_needed_types,
@@ -80,7 +80,10 @@ static std::vector<int> get_possible_sub_tile_indices(t_physical_tile_type_ptr p
     return sub_tile_indices;
 }
 
-static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc head_pos) {
+/*
+ * Modified: added handover of LUT error matrix
+ */
+static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc head_pos, std::map<int, Change_Entry>* map, char** lut_errors) {
     auto& device_ctx = g_vpr_ctx.device();
     auto& place_ctx = g_vpr_ctx.placement();
 
@@ -102,14 +105,13 @@ static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc he
          * legal floorplan location, all other blocks in the macro will be as well.
          */
         if (macro_constrained && imember == 0) {
-            bool member_loc_good = cluster_floorplanning_legal(pl_macro.members[imember].blk_index, member_pos);
+            bool member_loc_good = cluster_floorplanning_legal(pl_macro.members[imember].blk_index, member_pos, map, lut_errors);
             if (!member_loc_good) {
                 macro_can_be_placed = false;
                 break;
             }
         }
 
-        // TODO:MODIFY
         // Check whether the location could accept block of this type
         // Then check whether the location could still accommodate more blocks
         // Also check whether the member position is valid, that is the member's location
@@ -129,7 +131,10 @@ static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc he
     return (macro_can_be_placed);
 }
 
-static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_macro) {
+/*
+ * Modified: added handover of LUT error matrix
+ */
+static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_macro, char** lut_errors) {
     auto& place_ctx = g_vpr_ctx.mutable_placement();
 
     int macro_placed = false;
@@ -142,10 +147,12 @@ static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_mac
         return (macro_placed);
     }
 
-    int macro_can_be_placed = check_macro_can_be_placed(pl_macro, itype, head_pos);
+    std::map<int, Change_Entry> map;
+    int macro_can_be_placed = check_macro_can_be_placed(pl_macro, itype, head_pos, &map, lut_errors);
 
     if (macro_can_be_placed) {
         // Place down the macro
+        //TODO: consider changed inputs
         macro_placed = true;
         for (size_t imember = 0; imember < pl_macro.members.size(); imember++) {
             t_pl_loc member_pos = head_pos + pl_macro.members[imember].offset;
@@ -167,7 +174,10 @@ static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_mac
     return (macro_placed);
 }
 
-static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<std::vector<int>>& free_locations, const std::vector<t_pl_macro>& sorted_macros) {
+/*
+ * Modified: added handover of LUT error matrix
+ */
+static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<std::vector<int>>& free_locations, const std::vector<t_pl_macro>& sorted_macros, char** lut_errors) {
     int macro_placed;
     int itype, itry, ipos, isub_tile;
     ClusterBlockId blk_id;
@@ -197,7 +207,7 @@ static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<st
                 ipos = vtr::irand(free_locations[itype][isub_tile] - 1);
 
                 // Try to place the macro
-                macro_placed = try_place_macro(itype, ipos, isub_tile, pl_macro);
+                macro_placed = try_place_macro(itype, ipos, isub_tile, pl_macro, lut_errors);
 
             } // Finished all tries
 
@@ -212,7 +222,7 @@ static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<st
                 for (isub_tile = 0; tile_type->sub_tiles.size() && macro_placed == false; isub_tile++) {
                     for (ipos = 0; ipos < free_locations[itype][isub_tile] && macro_placed == false; ipos++) {
                         // Try to place the macro
-                        macro_placed = try_place_macro(itype, ipos, isub_tile, pl_macro);
+                        macro_placed = try_place_macro(itype, ipos, isub_tile, pl_macro, lut_errors);
                     }
                 } // Exhausted all the legal placement position for this macro
 
@@ -242,8 +252,10 @@ static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<st
 }
 
 /* Place blocks that are NOT a part of any macro.
- * We'll randomly place each block in the clustered netlist, one by one. */
-static void initial_placement_blocks(std::vector<std::vector<int>>& free_locations, enum e_pad_loc_type pad_loc_type, const std::vector<ClusterBlockId>& sorted_blocks) {
+ * We'll randomly place each block in the clustered netlist, one by one.
+ *
+ * Modified: added handover of LUT error matrix*/
+static void initial_placement_blocks(std::vector<std::vector<int>>& free_locations, enum e_pad_loc_type pad_loc_type, const std::vector<ClusterBlockId>& sorted_blocks, char** lut_errors) {
     auto& cluster_ctx = g_vpr_ctx.clustering();
     auto& place_ctx = g_vpr_ctx.mutable_placement();
 
@@ -292,9 +304,11 @@ static void initial_placement_blocks(std::vector<std::vector<int>>& free_locatio
             // Make sure that the position is EMPTY_BLOCK before placing the block down
             VTR_ASSERT(place_ctx.grid_blocks[to.x][to.y].blocks[to.sub_tile] == EMPTY_BLOCK_ID);
 
-            bool floorplan_good = cluster_floorplanning_legal(blk_id, to);
+            std::map<int, Change_Entry> map;
+            bool floorplan_good = cluster_floorplanning_legal(blk_id, to, &map, lut_errors);
 
             if (floorplan_good) {
+                //TODO: Modify to perm inputs
                 place_ctx.grid_blocks[to.x][to.y].blocks[to.sub_tile] = blk_id;
                 place_ctx.grid_blocks[to.x][to.y].usage++;
 
@@ -432,7 +446,10 @@ void print_sorted_blocks(const std::vector<ClusterBlockId>& sorted_blocks, const
     }
 }
 
-void initial_placement(enum e_pad_loc_type pad_loc_type, const char* constraints_file) {
+/*
+ * Modified: added handover of LUT error matrix
+ */
+void initial_placement(enum e_pad_loc_type pad_loc_type, const char* constraints_file, char** lut_errors) {
     vtr::ScopedStartFinishTimer timer("Initial Placement");
 
     /* Randomly places the blocks to create an initial placement. We rely on
@@ -503,7 +520,7 @@ void initial_placement(enum e_pad_loc_type pad_loc_type, const char* constraints
      * as fixed so they do not get moved during initial placement or during simulated annealing*/
     mark_fixed_blocks();
 
-    initial_placement_pl_macros(MAX_NUM_TRIES_TO_PLACE_MACROS_RANDOMLY, free_locations, sorted_macros);
+    initial_placement_pl_macros(MAX_NUM_TRIES_TO_PLACE_MACROS_RANDOMLY, free_locations, sorted_macros, lut_errors);
 
     // All the macros are placed, update the legal_pos[][] array and free_locations[] array
     for (const auto& type : device_ctx.physical_tile_types) {
@@ -530,7 +547,7 @@ void initial_placement(enum e_pad_loc_type pad_loc_type, const char* constraints
     } // Finish updating the legal_pos[][] and free_locations[] array
 
     //Place the rest of the blocks that are not macros in a sorted order
-    initial_placement_blocks(free_locations, pad_loc_type, sorted_blocks);
+    initial_placement_blocks(free_locations, pad_loc_type, sorted_blocks, lut_errors);
 
     /* Restore legal_pos */
     alloc_and_load_legal_placement_locations(legal_pos);

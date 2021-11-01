@@ -58,6 +58,8 @@
 #include "RL_agent_util.h"
 #include "place_checkpoint.h"
 
+#include "generate_errors.h"
+
 /*  define the RL agent's reward function factor constant. This factor controls the weight of bb cost *
  *  compared to the timing cost in the agent's reward function. The reward is calculated as           *
  * -1*(1.5-REWARD_BB_TIMING_RELATIVE_WEIGHT)*timing_cost + (1+REWARD_BB_TIMING_RELATIVE_WEIGHT)*bb_cost)
@@ -163,6 +165,13 @@ static const float cross_count[50] = {/* [0..49] */ 1.0, 1.0, 1.0, 1.0828,
 
 std::unique_ptr<FILE, decltype(&vtr::fclose)> f_move_stats_file(nullptr,
                                                                 vtr::fclose);
+
+/*
+ * This 2D-Array holds information about the error status of each LUT-memory-cell.
+ * 0 means fault-free, 1 stuck-at-1, 2 stuck-at-0 and 3 stuck-at-undefined.
+ */
+char** lut_errors;
+int num_clbs;
 
 #ifdef VTR_ENABLE_DEBUG_LOGGIING
 #    define LOG_MOVE_STATS_HEADER()                               \
@@ -410,7 +419,12 @@ static void print_placement_swaps_stats(const t_annealing_state& state);
 static void print_placement_move_types_stats(
     const MoveTypeStat& move_type_stat);
 
+static void free_error_matrix();
+
 /*****************************************************************************/
+/*
+ * Modified: added handover of LUT error matrix, added numclbs handover, added error init and free
+ */
 void try_place(const t_placer_opts& placer_opts,
                t_annealing_sched annealing_sched,
                const t_router_opts& router_opts,
@@ -476,6 +490,12 @@ void try_place(const t_placer_opts& placer_opts,
     num_swap_aborted = 0;
     num_ts_called = 0;
 
+    /* Read in the information about the faulty LUTs, if necessary. */
+    bool consider_faulty_luts = true; //TODO: add to options
+    if(consider_faulty_luts) {
+        read_lut_error_information(&lut_errors, &num_clbs);
+    }
+
     if (placer_opts.place_algorithm.is_timing_driven()) {
         /*do this before the initial placement to avoid messing up the initial placement */
         place_delay_model = alloc_lookups_and_delay_model(chan_width_dist,
@@ -511,7 +531,7 @@ void try_place(const t_placer_opts& placer_opts,
     vtr::ScopedStartFinishTimer timer("Placement");
 
     initial_placement(placer_opts.pad_loc_type,
-                      placer_opts.constraints_file.c_str());
+                      placer_opts.constraints_file.c_str(), lut_errors);
 
 #ifdef ENABLE_ANALYTIC_PLACE
     /*
@@ -975,6 +995,8 @@ void try_place(const t_placer_opts& placer_opts,
             p_runtime_ctx.f_update_td_costs_nets_elapsed_sec,
             p_runtime_ctx.f_update_td_costs_sum_nets_elapsed_sec,
             p_runtime_ctx.f_update_td_costs_total_elapsed_sec);
+
+    free_error_matrix();
 }
 
 /* Function to update the setup slacks and criticalities before the inner loop of the annealing/quench */
@@ -1289,6 +1311,8 @@ static void reset_move_nets(int num_nets_affected) {
  * which are stored in the enum type `t_place_algorithm`.
  *
  * @return Whether the block swap is accepted, rejected or aborted.
+ *
+ * Modified: added handover of LUT error matrix
  */
 static e_move_result try_swap(const t_annealing_state* state,
                               t_placer_costs* costs,
@@ -1349,6 +1373,7 @@ static e_move_result try_swap(const t_annealing_state* state,
 #endif //NO_GRAPHICS
     } else {
         //Generate a new move (perturbation) used to explore the space of possible placements
+        //TODO: init and hand over change map
         create_move_outcome = move_generator.propose_move(blocks_affected, move_type, rlim, placer_opts, criticalities);
     }
 
@@ -1382,6 +1407,7 @@ static e_move_result try_swap(const t_annealing_state* state,
          */
 
         /* Update the block positions */
+        //TODO: Add permutation with change map
         apply_move_blocks(blocks_affected);
 
         //Find all the nets affected by this swap and update the wiring costs.
@@ -2669,6 +2695,9 @@ static void alloc_and_load_for_fast_cost_update(float place_cost_exp) {
         }
 }
 
+/*
+ * Modified: added handover of LUT error matrix
+ */
 static void check_place(const t_placer_costs& costs,
                         const PlaceDelayModel* delay_model,
                         const PlacerCriticalities* criticalities,
@@ -2684,7 +2713,7 @@ static void check_place(const t_placer_costs& costs,
     error += check_placement_consistency();
     error += check_placement_costs(costs, delay_model, criticalities,
                                    place_algorithm);
-    error += check_placement_floorplanning();
+    error += check_placement_floorplanning(lut_errors);
 
     if (error == 0) {
         VTR_LOG("\n");
@@ -3054,4 +3083,11 @@ static void calculate_reward_and_process_outcome(
 
 bool placer_needs_lookahead(const t_vpr_setup& vpr_setup) {
     return (vpr_setup.PlacerOpts.place_algorithm.is_timing_driven());
+}
+
+void free_error_matrix() {
+    for (int i = 0; i < num_clbs; ++i) {
+        delete[] lut_errors[i];
+    }
+    delete[] lut_errors; /* Free the error list */
 }

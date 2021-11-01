@@ -15,11 +15,19 @@
 #ifndef VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_
 #    define VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_
 
+/**
+ * Modified: Added struct to handle information about possibly necessary input permutations in a LUT.
+ */
+struct Change_Entry {
+    std::string permutation;
+    int lut;
+};
+
 /*
  * Check that placement of each block is within the floorplan constraint region of that block (if the block has any constraints).
  * Returns the number of errors (inconsistencies in adherence to floorplanning constraints).
  */
-int check_placement_floorplanning();
+int check_placement_floorplanning(char** lut_errors);
 
 /*
  * Check if the block has floorplanning constraints
@@ -29,7 +37,7 @@ bool is_cluster_constrained(ClusterBlockId blk_id);
 /*
  * Check if the placement location would respect floorplan constraints of the block, if it has any
  */
-bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc);
+bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc, std::map<int, Change_Entry>* map, char** lut_errors);
 
 /*
  * Check whether any member of the macro has floorplan constraints
@@ -65,11 +73,14 @@ void propagate_place_constraints();
 
 void print_macro_constraint_error(const t_pl_macro& pl_macro);
 
+//TODO: MODIFY, hand change map and error matrix over
 inline bool floorplan_legal(const t_pl_blocks_to_be_moved& blocks_affected) {
     bool floorplan_legal;
 
     for (int i = 0; i < blocks_affected.num_moved_blocks; i++) {
-        floorplan_legal = cluster_floorplanning_legal(blocks_affected.moved_blocks[i].block_num, blocks_affected.moved_blocks[i].new_loc);
+        std::map<int, Change_Entry> map;
+        char** lut_errors;
+        floorplan_legal = cluster_floorplanning_legal(blocks_affected.moved_blocks[i].block_num, blocks_affected.moved_blocks[i].new_loc, &map, lut_errors);
         if (!floorplan_legal) {
 #    ifdef VERBOSE
             VTR_LOG("Move aborted for block %zu, location tried was x: %d, y: %d, subtile: %d \n", size_t(blocks_affected.moved_blocks[i].block_num), blocks_affected.moved_blocks[i].new_loc.x, blocks_affected.moved_blocks[i].new_loc.y, blocks_affected.moved_blocks[i].new_loc.sub_tile);
@@ -131,5 +142,11 @@ int get_part_reg_size(PartitionRegion& pr, t_logical_block_type_ptr block_type, 
  * it is, the more difficult the block is to place.
  */
 int get_floorplan_score(ClusterBlockId blk_id, PartitionRegion& pr, t_logical_block_type_ptr block_type, GridTileLookup& grid_tiles);
+
+/*
+ * Modified: Added compatibility check between a cluster and a clb. Tries to permutate the input signals of the cluster, if necessary.
+ */
+bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc);
+std::string check_compatibility_lut(char* error_line);
 
 #endif /* VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_ */

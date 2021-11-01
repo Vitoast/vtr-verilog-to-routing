@@ -2,6 +2,7 @@
 
 #include "place_util.h"
 #include "globals.h"
+#include "place_constraints.h"
 
 #include "vtr_random.h"
 
@@ -528,7 +529,7 @@ ClusterBlockId pick_from_block() {
     //No movable blocks found
     return ClusterBlockId::INVALID();
 }
-
+//TODO: MODIFY, hand change map and error matrix over
 bool find_to_loc_uniform(t_logical_block_type_ptr type,
                          float rlim,
                          const t_pl_loc from,
@@ -598,6 +599,7 @@ void set_placer_breakpoint_reached(bool flag) {
     f_placer_breakpoint_reached = flag;
 }
 
+//TODO: MODIFY, hand change map and error matrix over
 bool find_to_loc_median(t_logical_block_type_ptr blk_type,
                         const t_pl_loc& from_loc,
                         const t_bb* limit_coords,
@@ -653,6 +655,7 @@ bool find_to_loc_median(t_logical_block_type_ptr blk_type,
     return true;
 }
 
+//TODO: MODIFY, hand change map and error matrix over
 bool find_to_loc_centroid(t_logical_block_type_ptr blk_type,
                           const t_pl_loc& from_loc,
                           const t_pl_loc& centroid,
@@ -761,7 +764,7 @@ void compressed_grid_to_loc(t_logical_block_type_ptr blk_type, int cx, int cy, t
     to_loc.sub_tile = compatible_sub_tiles[vtr::irand((int)compatible_sub_tiles.size() - 1)];
 }
 
-//TODO: MODIFY, add comp check
+//TODO: MODIFY, hand change map and error matrix over
 bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type, int min_cx, int max_cx, int min_cy, int max_cy, int delta_cx, int cx_from, int cy_from, int& cx_to, int& cy_to, bool is_median) {
     const auto& compressed_block_grid = g_vpr_ctx.placement().compressed_block_grids[type->index];
 
@@ -842,7 +845,8 @@ bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type, int 
             if (cx_from == cx_to && cy_from == cy_to) {
                 continue; //Same from/to location -- try again for new y-position
             } else {
-                legal = true;
+
+                legal = true;//check_compatibility_clb(map, lut_errors, blk_id, loc);
             }
         }
     }

@@ -2,12 +2,16 @@
 // Created by Tobias Steinbach
 //
 #include <iostream>
-using std::endl;
 #include <fstream>
-using std::ofstream;
+#include <sstream>
+#include <string>
 #include <cstdlib>
 #include <random>
 #include <vector>
+
+using std::ofstream;
+using std::endl;
+using namespace std;
 
 #include "vpr_utils.h"
 #include "vpr_context.h"
@@ -104,6 +108,44 @@ void generate_device_faults(double sa1,
             data << endl;
         }
     }
-
+    VTR_LOG("File with random faults in LUT-memory-cells was created.\n");
     data.close();
+}
+
+/*
+ * Loads the information about the LUT-errors from file "device_faults.txt"
+ */
+void read_lut_error_information(char*** lut_errors, int* num_clbs) {
+    //stuff for reading error file
+    ifstream error_data("device_faults.txt");
+    char cur_cell;
+    int num_luts_per_clb = 0;
+    int num_cells_per_lut = 64;
+    *num_clbs = 0;
+    //read general clb infos from file
+    std::string line;
+    //read generic header
+    std::getline(error_data, line);
+    //read number of clbs in second line
+    std::getline(error_data, line);
+    *num_clbs = stoi(line);
+    // read number of luts per clb form third line
+    std::getline(error_data, line);
+    num_luts_per_clb = stoi(line);
+    //allocate array for fault data
+    *lut_errors = (char **) malloc((*num_clbs) * sizeof(char*));
+    //read errors for one clb and process it
+    for (int i = 0; i < *num_clbs; ++i) {
+        //allocate data for one clb
+        (*lut_errors)[i] = (char *) malloc(num_luts_per_clb*num_cells_per_lut * sizeof(char));
+        int j = 0;
+        std::getline(error_data, line);
+        std::istringstream str(line);
+        //read clb char/cell by char/cell
+        while(str >> cur_cell) {
+            (*lut_errors)[i][j] = cur_cell;
+            ++j;
+        }
+    }
+    VTR_LOG("Information about faulty LUT-memory-cells were read in.\n");
 }

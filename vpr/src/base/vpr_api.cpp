@@ -380,7 +380,7 @@ bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
     vpr_init_graphics(vpr_setup, arch);
 
     //Modified: added generation of faulty-LUT file
-    bool generate_errors = true;
+    bool generate_errors = true;//TODO: add to options
     if(generate_errors) {
         double sa1 = 0.01;
         double sa0 = 0.01;

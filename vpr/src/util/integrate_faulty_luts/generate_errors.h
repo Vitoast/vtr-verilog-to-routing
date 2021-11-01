@@ -16,5 +16,6 @@ void generate_device_faults(double sa0,
                             double sa1,
                             double sau);
 
+void read_lut_error_information(char*** lut_errors, int* num_clbs);
 
 #endif //VTR_VERILOG_TO_ROUTING_GENERATE_ERRORS_H
