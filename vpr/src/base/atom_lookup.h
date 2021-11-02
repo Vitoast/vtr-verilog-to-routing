@@ -71,6 +71,12 @@ class AtomLookup {
      */
     void set_atom_clb(const AtomBlockId blk_id, const ClusterBlockId clb);
 
+    /**
+     * Modified:
+     * @bried Returns the atom blocks associated with clb
+     */
+    std::vector<AtomBlockId> clb_atom(const ClusterBlockId clb);
+
     /*
      * Nets
      */
@@ -117,6 +123,9 @@ class AtomLookup {
     vtr::linear_map<AtomPinId, tatum::NodeId> atom_pin_tnode_external_;
     vtr::linear_map<AtomPinId, tatum::NodeId> atom_pin_tnode_internal_;
     vtr::linear_map<tatum::NodeId, AtomPinId> tnode_atom_pin_;
+
+    //Modified: added inverse mapping of atom_to_clb_
+    std::map<ClusterBlockId, std::vector<AtomBlockId>> clb_to_atom_;
 };
 
 #endif

@@ -78,7 +78,34 @@ ClusterBlockId AtomLookup::atom_clb(const AtomBlockId blk_id) const {
 void AtomLookup::set_atom_clb(const AtomBlockId blk_id, const ClusterBlockId clb) {
     VTR_ASSERT(blk_id);
 
+    //delete atom from old clb in clb-atom map, if necessary
+    ClusterBlockId old_clb = atom_clb(blk_id);
+    if (old_clb != ClusterBlockId::INVALID()) {
+        auto tmp = clb_to_atom_.find(old_clb);
+        tmp->second.erase(std::find(tmp->second.begin(), tmp->second.end(), blk_id));
+    }
+
+    //update atom-clb map
     atom_to_clb_.update(blk_id, clb);
+
+    //add atom to new clb in clb-atom map
+    auto iter = clb_to_atom_.find(clb);
+    if (iter == clb_to_atom_.end()) {
+        std::vector<AtomBlockId> vec = std::vector<AtomBlockId>();
+        vec.insert(vec.end(), blk_id);
+        clb_to_atom_.insert(std::pair<ClusterBlockId, std::vector<AtomBlockId>>(clb, vec));
+    }
+    else {
+        iter->second.insert(iter->second.end(), blk_id);
+    }
+}
+
+std::vector<AtomBlockId> AtomLookup::clb_atom(const ClusterBlockId clb) {
+    auto iter = clb_to_atom_.find(clb);
+    if (iter == clb_to_atom_.end()) {
+        return std::vector<AtomBlockId>();
+    }
+    return iter->second;
 }
 
 /*

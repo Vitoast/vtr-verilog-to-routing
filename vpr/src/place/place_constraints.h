@@ -19,7 +19,7 @@
  * Modified: Added struct to handle information about possibly necessary input permutations in a LUT.
  */
 struct Change_Entry {
-    std::string permutation;
+    std::vector<int> permutation;
     int lut;
 };
 

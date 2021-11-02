@@ -768,7 +768,7 @@ void compressed_grid_to_loc(t_logical_block_type_ptr blk_type, int cx, int cy, t
     to_loc.sub_tile = compatible_sub_tiles[vtr::irand((int)compatible_sub_tiles.size() - 1)];
 }
 
-//Modified: added handover of LUT error matrix
+//Modified: added handover of LUT error matrix, added compatibility check for clb and cluster
 bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type, int min_cx, int max_cx, int min_cy, int max_cy, int delta_cx, int cx_from, int cy_from, int& cx_to, int& cy_to, bool is_median, std::map<int, Change_Entry>* map, char** lut_errors) {
     const auto& compressed_block_grid = g_vpr_ctx.placement().compressed_block_grids[type->index];
 
@@ -849,8 +849,13 @@ bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type, int 
             if (cx_from == cx_to && cy_from == cy_to) {
                 continue; //Same from/to location -- try again for new y-position
             } else {
-
-                legal = check_compatibility_clb(map, lut_errors, blk_id, loc);
+                t_pl_loc to_loc = t_pl_loc();
+                t_pl_loc from_loc = t_pl_loc();
+                compressed_grid_to_loc(type, cx_to, cy_to, to_loc);
+                compressed_grid_to_loc(type, cx_from, cy_from, from_loc);
+                auto& place_ctx = g_vpr_ctx.placement();
+                ClusterBlockId blk_id = place_ctx.grid_blocks[from_loc.x][from_loc.y].blocks.at(from_loc.sub_tile);
+                legal = check_compatibility_clb(map, lut_errors, blk_id, to_loc);
             }
         }
     }

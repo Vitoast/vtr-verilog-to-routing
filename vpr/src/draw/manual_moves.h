@@ -153,7 +153,7 @@ bool string_is_a_number(std::string block_id);
  */
 e_move_result pl_do_manual_move(double d_cost, double d_timing, double d_bounding_box, e_move_result& move_outcome);
 
-e_create_move manual_move_display_and_propose(ManualMoveGenerator& manual_move_generator, t_pl_blocks_to_be_moved& blocks_affected, e_move_type& move_type, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities);
+e_create_move manual_move_display_and_propose(ManualMoveGenerator& manual_move_generator, t_pl_blocks_to_be_moved& blocks_affected, e_move_type& move_type, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities, std::map<int, Change_Entry>* map, char** lut_errors);
 
 #endif /*NO_GRAPHICS*/
 
