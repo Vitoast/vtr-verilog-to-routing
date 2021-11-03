@@ -362,6 +362,7 @@ void vpr_init_with_options(const t_options* options, t_vpr_setup* vpr_setup, t_a
     fflush(stdout);
 }
 
+//Modified: added generation of faulty-LUT file
 bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
     if (vpr_setup.exit_before_pack) {
         VTR_LOG_WARN("Exiting before packing as requested.\n");
@@ -379,7 +380,6 @@ bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
     vpr_create_device(vpr_setup, arch);
     vpr_init_graphics(vpr_setup, arch);
 
-    //Modified: added generation of faulty-LUT file
     bool generate_errors = true;//TODO: add to options
     if(generate_errors) {
         double sa1 = 0.01;
@@ -636,6 +636,8 @@ bool vpr_place_flow(t_vpr_setup& vpr_setup, const t_arch& arch) {
     if (placer_opts.doPlacement == STAGE_SKIP) {
         //pass
     } else {
+        init_lut_permutations();
+
         if (placer_opts.doPlacement == STAGE_DO) {
             //Do the actual placement
             vpr_place(vpr_setup, arch);

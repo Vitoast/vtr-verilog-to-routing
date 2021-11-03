@@ -2022,3 +2022,49 @@ void print_timing_stats(std::string name,
             current.num_full_hold_updates - past.num_full_hold_updates,
             current.num_full_setup_hold_updates - past.num_full_setup_hold_updates);
 }
+
+//Modified: added pre-computation of lut-permutations
+void init_lut_permutations() {
+
+    auto& mut_place_ctx = g_vpr_ctx.mutable_placement();
+    int num_perms = 15;
+    int num_swaps_per_perm = 16;
+
+    const std::string perms[15] = {"01", "02", "03", "04", "05", "12", "13", "14", "15", "23", "24", "25", "34", "35", "45"};
+
+    Single_Swap swaps[15][16] =
+        {/*01*/{Single_Swap(1,2), Single_Swap(5,6), Single_Swap(9,10), Single_Swap(13,14), Single_Swap(17,18), Single_Swap(21,22), Single_Swap(25,26), Single_Swap(29,30),
+                 Single_Swap(33,34), Single_Swap(37,38), Single_Swap(41,42), Single_Swap(45,46), Single_Swap(49,50), Single_Swap(53,54), Single_Swap(57,58), Single_Swap(61,62)},
+         /*02*/{Single_Swap(1,4), Single_Swap(2,6), Single_Swap(9,12), Single_Swap(11,14), Single_Swap(17, 20), Single_Swap(18,22), Single_Swap(25,28), Single_Swap(27,30),
+                 Single_Swap(33,36), Single_Swap(35, 38), Single_Swap(41,44), Single_Swap(43,46), Single_Swap(49,52), Single_Swap(51,54), Single_Swap(57,60), Single_Swap(59,62)},
+         /*03*/{Single_Swap(1,8), Single_Swap(3,10), Single_Swap(5,12), Single_Swap(7,14), Single_Swap(17,24), Single_Swap(19, 26), Single_Swap(21,28), Single_Swap(23,30),
+                 Single_Swap(33,40), Single_Swap(35, 42), Single_Swap(37,44), Single_Swap(39,46), Single_Swap(49, 56), Single_Swap(51,58), Single_Swap(53,60), Single_Swap(55,62)},
+         /*04*/{Single_Swap(1,16), Single_Swap(3,18), Single_Swap(5,20), Single_Swap(7,22), Single_Swap(9,24), Single_Swap(11,26), Single_Swap(13,28), Single_Swap(15,30),
+                 Single_Swap(33,48), Single_Swap(35,50), Single_Swap(37,52), Single_Swap(39,54), Single_Swap(41,56), Single_Swap(43,58), Single_Swap(45,60), Single_Swap(46,62)},
+         /*05*/{Single_Swap(1,32), Single_Swap(3,34), Single_Swap(5,36), Single_Swap(7,38), Single_Swap(9,40), Single_Swap(11, 42), Single_Swap(13,44), Single_Swap(15,46),
+                 Single_Swap(17,48), Single_Swap(19,50), Single_Swap(21,52), Single_Swap(23,54), Single_Swap(25,56), Single_Swap(27,58), Single_Swap(29,60), Single_Swap(31,62)},
+         /*12*/{Single_Swap(2,4), Single_Swap(3,5), Single_Swap(10,12), Single_Swap(11,13), Single_Swap(18,20), Single_Swap(19,21), Single_Swap(26,28), Single_Swap(27,29),
+                 Single_Swap(34,36), Single_Swap(35,37), Single_Swap(42,44), Single_Swap(43,45), Single_Swap(50,52), Single_Swap(51,53), Single_Swap(58,60), Single_Swap(59,51)},
+         /*13*/{Single_Swap(2,8), Single_Swap(3,9), Single_Swap(6,12), Single_Swap(7,13), Single_Swap(18,24), Single_Swap(19,25), Single_Swap(22,28), Single_Swap(23,29),
+                 Single_Swap(34,40), Single_Swap(35,41), Single_Swap(38,44), Single_Swap(39,45), Single_Swap(50,56), Single_Swap(51,57), Single_Swap(54,60), Single_Swap(55,61)},
+         /*14*/{Single_Swap(2,16), Single_Swap(3,17), Single_Swap(6,20), Single_Swap(7,21), Single_Swap(10,24), Single_Swap(11,25), Single_Swap(14,28), Single_Swap(15,29),
+                 Single_Swap(34,48), Single_Swap(35,49), Single_Swap(38,52), Single_Swap(39,53), Single_Swap(42,56), Single_Swap(43,57), Single_Swap(46,60), Single_Swap(47,61)},
+         /*15*/{Single_Swap(2,32), Single_Swap(3,33), Single_Swap(6,36), Single_Swap(7,37), Single_Swap(10,40), Single_Swap(11,41), Single_Swap(14,44), Single_Swap(15,45),
+                 Single_Swap(18,48), Single_Swap(19,49), Single_Swap(22,52), Single_Swap(23,53), Single_Swap(26,56), Single_Swap(27,57), Single_Swap(30,60), Single_Swap(31,61)},
+         /*23*/{Single_Swap(4,8), Single_Swap(5,9), Single_Swap(6,10), Single_Swap(7,11), Single_Swap(20,24), Single_Swap(21,25), Single_Swap(22,26), Single_Swap(23,27),
+                 Single_Swap(36,40), Single_Swap(37,41), Single_Swap(38,42), Single_Swap(39,43), Single_Swap(52,56), Single_Swap(53,57), Single_Swap(54,58), Single_Swap(55,59)},
+         /*24*/{Single_Swap(4,16), Single_Swap(5,17), Single_Swap(6,18), Single_Swap(7,19), Single_Swap(12,24), Single_Swap(13,25), Single_Swap(14,26), Single_Swap(15,27),
+                 Single_Swap(36,48), Single_Swap(37,49), Single_Swap(38,50), Single_Swap(39,51), Single_Swap(44,56), Single_Swap(45,57), Single_Swap(46,58), Single_Swap(47,59)},
+         /*25*/{Single_Swap(4,32), Single_Swap(5,33), Single_Swap(6,34), Single_Swap(7,35), Single_Swap(12,40), Single_Swap(13,41), Single_Swap(14,42), Single_Swap(15,43),
+                 Single_Swap(20,48), Single_Swap(21,49), Single_Swap(22,50), Single_Swap(23,51), Single_Swap(28,56), Single_Swap(29,57), Single_Swap(30,58), Single_Swap(31,59)},
+         /*34*/{Single_Swap(8,16), Single_Swap(9,17), Single_Swap(10,18), Single_Swap(11,19), Single_Swap(12,20), Single_Swap(13,21), Single_Swap(14,22), Single_Swap(15,23),
+                 Single_Swap(40,48), Single_Swap(41,49), Single_Swap(42,50), Single_Swap(43,51), Single_Swap(44,52), Single_Swap(45,53), Single_Swap(46,54), Single_Swap(47,55)},
+         /*35*/{Single_Swap(8,32), Single_Swap(9,33), Single_Swap(10,34), Single_Swap(11,35), Single_Swap(12,36), Single_Swap(13,37), Single_Swap(14,38), Single_Swap(15,39),
+                 Single_Swap(24,48), Single_Swap(25,49), Single_Swap(26,50), Single_Swap(27,51), Single_Swap(28,52), Single_Swap(29,53), Single_Swap(30,54), Single_Swap(31,55)},
+         /*45*/{Single_Swap(16,32), Single_Swap(17,33), Single_Swap(18,34), Single_Swap(19,35), Single_Swap(20,36), Single_Swap(21,37), Single_Swap(22,38), Single_Swap(23,39),
+                 Single_Swap(24,40), Single_Swap(25,41), Single_Swap(26,42), Single_Swap(27,43), Single_Swap(28,44), Single_Swap(29,45), Single_Swap(30,46), Single_Swap(31,47)}};
+
+    for (int i = 0; i < num_perms; ++i) {
+        mut_place_ctx.permutations.insert(std::pair<std::string, Single_Swap*>(perms[i], swaps[i]));
+    }
+}

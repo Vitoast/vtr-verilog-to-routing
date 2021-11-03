@@ -289,6 +289,17 @@ struct ClusteringContext : public Context {
     std::map<ClusterBlockId, std::map<int, int>> pre_routing_net_pin_mapping;
 };
 
+//helping struct to save positions of a single swap of lut-cells
+struct Single_Swap {
+    Single_Swap(int a, int b);
+    int from;
+    int to;
+};
+Single_Swap::Single_Swap(int a, int b) {
+    Single_Swap::from = a;
+    Single_Swap::to = b;
+}
+
 /**
  * @brief State relating to placement
  *
@@ -322,6 +333,12 @@ struct PlacementContext : public Context {
      * Used for unique identification and consistency checking
      */
     std::string placement_id;
+
+    /**
+     * Holds for each possible input permutation in a LUT the connected swaps in the truth table.
+     * Has information up to a 6-LUT.
+     */
+     std::map<std::string, Single_Swap*> permutations;
 };
 
 /**

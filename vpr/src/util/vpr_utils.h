@@ -191,4 +191,7 @@ void make_room_in_vector(T* vec, size_t elem_position) {
 
     vec->resize(elem_position + 1);
 }
+
+//initialize the data structure in placement context that holds the swaps for the LUT-input-permutations.
+void init_lut_permutations();
 #endif
