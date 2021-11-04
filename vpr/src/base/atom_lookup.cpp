@@ -100,7 +100,7 @@ void AtomLookup::set_atom_clb(const AtomBlockId blk_id, const ClusterBlockId clb
     }
 }
 
-std::vector<AtomBlockId> AtomLookup::clb_atom(const ClusterBlockId clb) {
+std::vector<AtomBlockId> AtomLookup::clb_atom(const ClusterBlockId clb) const {
     auto iter = clb_to_atom_.find(clb);
     if (iter == clb_to_atom_.end()) {
         return std::vector<AtomBlockId>();

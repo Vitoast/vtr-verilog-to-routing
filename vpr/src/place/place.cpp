@@ -171,7 +171,7 @@ std::unique_ptr<FILE, decltype(&vtr::fclose)> f_move_stats_file(nullptr,
  * 0 means fault-free, 1 stuck-at-1, 2 stuck-at-0 and 3 stuck-at-undefined.
  */
 char** lut_errors;
-int num_clbs;
+int num_blocks;
 
 #ifdef VTR_ENABLE_DEBUG_LOGGIING
 #    define LOG_MOVE_STATS_HEADER()                               \
@@ -493,7 +493,7 @@ void try_place(const t_placer_opts& placer_opts,
     /* Read in the information about the faulty LUTs, if necessary. */
     bool consider_faulty_luts = true; //TODO: add to options
     if(consider_faulty_luts) {
-        read_lut_error_information(&lut_errors, &num_clbs);
+        read_lut_error_information(&lut_errors, &num_blocks);
     }
 
     if (placer_opts.place_algorithm.is_timing_driven()) {
@@ -3087,7 +3087,7 @@ bool placer_needs_lookahead(const t_vpr_setup& vpr_setup) {
 }
 
 void free_error_matrix() {
-    for (int i = 0; i < num_clbs; ++i) {
+    for (int i = 0; i < num_blocks; ++i) {
         delete[] lut_errors[i];
     }
     delete[] lut_errors; /* Free the error list */

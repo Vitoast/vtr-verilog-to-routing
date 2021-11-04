@@ -45,14 +45,14 @@ void generate_device_faults(double sa1,
         //get the necessary device information
         auto& device_ctx = g_vpr_ctx.mutable_device();
         int num_luts_per_clb = 0;
-        size_t num_clbs = 0;
+        size_t num_blocks = 0;
         int lut_size = 6;
+        num_blocks = device_ctx.grid.matrix().size();
         //iterate over all block types in the device to search for CLBs
         for (const auto& log_type : device_ctx.logical_block_types) {
             const auto& type = log_type.pb_type;
             //if "clb" found, get information
             if (strcmp(log_type.name, "clb") == 0) {
-                num_clbs = device_ctx.grid.num_instances(log_type.equivalent_tiles[0]);
                 //iterate over all modes of the CLB and extract number of included logic parts (LUTs)
                 //use maximum number of parts in modes
                 for (int j = 0; j < type->num_modes; ++j) {
@@ -68,12 +68,12 @@ void generate_device_faults(double sa1,
         }
 
         //print header to file
-        data << "This represents fault types of Bits of LUTs of CLBs (0: FF, 1: SA1, 2:SA0, 3:SAU). Number of CLBs and LUTs per CLB:" << endl;
-        data << num_clbs << endl;
+        data << "This represents fault types of Bits of LUTs of CLBs (0: FF, 1: SA1, 2:SA0, 3:SAU). Number of blocks in the grid and LUTs per CLB:" << endl;
+        data << num_blocks << endl;
         data << num_luts_per_clb << endl;
 
         //generate errors for each bit in luts by given probabilities
-        for (i = 0; i < static_cast<int>(num_clbs); ++i) {
+        for (i = 0; i < static_cast<int>(num_blocks); ++i) {
             for (int j = 0; j < num_luts_per_clb * pow(2, lut_size); ++j) {
                 //add SA1 error
                 if (r <= sa1) {
@@ -115,27 +115,27 @@ void generate_device_faults(double sa1,
 /*
  * Loads the information about the LUT-errors from file "device_faults.txt"
  */
-void read_lut_error_information(char*** lut_errors, int* num_clbs) {
+void read_lut_error_information(char*** lut_errors, int* num_blocks) {
     //stuff for reading error file
     ifstream error_data("device_faults.txt");
     char cur_cell;
     int num_luts_per_clb = 0;
     int num_cells_per_lut = 64;
-    *num_clbs = 0;
+    *num_blocks = 0;
     //read general clb infos from file
     std::string line;
     //read generic header
     std::getline(error_data, line);
     //read number of clbs in second line
     std::getline(error_data, line);
-    *num_clbs = stoi(line);
+    *num_blocks = stoi(line);
     // read number of luts per clb form third line
     std::getline(error_data, line);
     num_luts_per_clb = stoi(line);
     //allocate array for fault data
-    *lut_errors = (char **) malloc((*num_clbs) * sizeof(char*));
+    *lut_errors = (char **) malloc((*num_blocks) * sizeof(char*));
     //read errors for one clb and process it
-    for (int i = 0; i < *num_clbs; ++i) {
+    for (int i = 0; i < *num_blocks; ++i) {
         //allocate data for one clb
         (*lut_errors)[i] = (char *) malloc(num_luts_per_clb*num_cells_per_lut * sizeof(char));
         int j = 0;

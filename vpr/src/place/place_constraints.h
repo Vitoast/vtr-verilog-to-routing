@@ -19,9 +19,14 @@
  * Modified: Added struct to handle information about possibly necessary input permutations in a LUT.
  */
 struct Change_Entry {
+    Change_Entry(std::vector<int>* perm, int l);
     std::vector<int> permutation;
     int lut;
 };
+Change_Entry::Change_Entry(std::vector<int>* perm, int l) {
+    permutation = *perm;
+    lut = l;
+}
 
 /*
  * Check that placement of each block is within the floorplan constraint region of that block (if the block has any constraints).
@@ -147,6 +152,7 @@ int get_floorplan_score(ClusterBlockId blk_id, PartitionRegion& pr, t_logical_bl
  * Modified: Added compatibility check between a cluster and a clb. Tries to permutate the input signals of the cluster, if necessary.
  */
 bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc);
-std::string check_compatibility_lut(char* error_line);
+bool check_compatibility_lut(const char* error_line, const std::vector<std::vector<vtr::LogicValue>> table, std::vector<int>* perm);
+bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<Change_Entry>>* cover, int num_fcts);
 
 #endif /* VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_ */

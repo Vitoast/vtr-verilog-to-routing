@@ -75,7 +75,7 @@ class AtomLookup {
      * Modified:
      * @bried Returns the atom blocks associated with clb
      */
-    std::vector<AtomBlockId> clb_atom(const ClusterBlockId clb);
+    std::vector<AtomBlockId> clb_atom(const ClusterBlockId clb) const;
 
     /*
      * Nets

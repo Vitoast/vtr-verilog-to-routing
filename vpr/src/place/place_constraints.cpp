@@ -450,15 +450,77 @@ int get_floorplan_score(ClusterBlockId blk_id, PartitionRegion& pr, t_logical_bl
     return total_type_tiles - num_pr_tiles;
 }
 
-//TODO:fill
+//Modified: added compatibility check between a packed cluster and a physical clb.
 bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc) {
-    //clear map
+    //clear map to avoid old values
     (*map).clear();
-
+    std::map<int, std::vector<Change_Entry>> cover;
+    auto& atom_ctx = g_vpr_ctx.atom();
+    //get atoms assigned to current clb
+    const std::vector<AtomBlockId> functions = atom_ctx.lookup.clb_atom(blk_id);
+    //get index of block belonging to destination of placement
+    auto& device_ctx = g_vpr_ctx.device();
+    unsigned long position = loc.x * device_ctx.grid.width() + loc.y;
+    int num_luts_per_clb = 4;
+    //check compatibility for each function in clb
+    for (int fct = 0; fct < functions.size(); ++fct) {
+        for (int lut = 0; lut < num_luts_per_clb; ++lut) {
+            std::vector<int> perm;
+            //check if current function is compatible to a LUT at the destination
+            if (check_compatibility_lut(lut_errors[position], atom_ctx.nlist.block_truth_table(functions[fct]), &perm)) {
+                //add necessary permutation to mapping from fct to lut
+                cover.find(fct)->second.insert(cover.find(fct)->second.end(), Change_Entry(&perm, lut));
+            }
+        }
+        //if function is incompatible, so is clb
+        if(cover.find(fct)->second.empty()) {
+            (*map).clear();
+            return false;
+        }
+    }
+    //check if a cover from luts and fcts exist and get the necessary permutations
+    return clb_coverable(map, &cover, functions.size());
+}
+//Modified: added compatibility check for single function and LUT.
+bool check_compatibility_lut(const char* error_line, const std::vector<std::vector<vtr::LogicValue>> table, std::vector<int>* perm) {
+    //TODO
     return true;
 }
 
-std::string check_compatibility_lut(const char* error_line) {
-
-    return "0";
+//Modified: added greedy-approach-based check if the clb can cover all the functions of the cluster at once.
+bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<Change_Entry>>* cover, int num_fcts) {
+    if (cover->empty())
+        return false;
+    int min_fct = 0;
+    for (int i = 0; i < num_fcts; ++i) {
+        auto cur_fct = cover->begin();
+        while (cur_fct != cover->end()) {
+            if (cover->find(min_fct)->second.size() < cur_fct->second.size()) {
+               min_fct = cur_fct->first;
+            }
+            ++cur_fct;
+        }
+        //if map with compatible luts is empty, function cannot be mapped and clb is not compatible.
+        if(cover->find(min_fct)->second.empty())
+            return false;
+        else {
+            //assign first matching lut to current function and save necessary permutations
+            (*map).insert(std::pair<int, Change_Entry>(min_fct, cover->find(min_fct)->second[0]));
+            //get index of lut that is mapped
+            int assigned_lut = cover->find(min_fct)->second[0].lut;
+            //delete mapped function from cover
+            cover->erase(cover->find(min_fct));
+            cur_fct = cover->begin();
+            //iterate over rest functions and delete all entries that would map to the already assigned LUT.
+            while (cur_fct != cover->end()) {
+                auto cur_lut = cur_fct->second.begin();
+                while (cur_lut != cur_fct->second.end()) {
+                    if (cur_lut->lut == assigned_lut)
+                        cur_fct->second.erase(cur_lut);
+                }
+                ++cur_fct;
+            }
+        }
+    }
+    return true;
 }
