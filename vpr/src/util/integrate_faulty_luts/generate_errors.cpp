@@ -46,7 +46,7 @@ void generate_device_faults(double sa1,
         auto& device_ctx = g_vpr_ctx.mutable_device();
         int num_luts_per_clb = 0;
         size_t num_blocks = 0;
-        int lut_size = 6;
+        int lut_size = 0;
         num_blocks = device_ctx.grid.matrix().size();
         //iterate over all block types in the device to search for CLBs
         for (const auto& log_type : device_ctx.logical_block_types) {

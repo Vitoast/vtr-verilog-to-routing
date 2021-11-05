@@ -461,13 +461,34 @@ bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors
     //get index of block belonging to destination of placement
     auto& device_ctx = g_vpr_ctx.device();
     unsigned long position = loc.x * device_ctx.grid.width() + loc.y;
-    int num_luts_per_clb = 4;
+    //search for the information about the size and number of luts in the clb
+    int num_luts_per_clb = 0;
+    int num_inputs_lut = 0;
+    for (const auto& log_type : device_ctx.logical_block_types) {
+        const auto& type = log_type.pb_type;
+        //if "clb" found, get information
+        if (strcmp(log_type.name, "clb") == 0) {
+            //iterate over all modes of the CLB and extract number of included logic parts (LUTs)
+            //use maximum number of parts in modes
+            for (int j = 0; j < type->num_modes; ++j) {
+                for (int k = 0; k < type->modes[j].num_pb_type_children; ++k) {
+                    if (type->modes[j].pb_type_children[k].num_pb > num_luts_per_clb) {
+                        num_luts_per_clb = type->modes[j].pb_type_children[k].num_pb;
+                        num_inputs_lut = type->modes[j].pb_type_children[k].num_input_pins;
+                    }
+                }
+            }
+            break;
+        }
+    }
     //check compatibility for each function in clb
     for (int fct = 0; fct < functions.size(); ++fct) {
         for (int lut = 0; lut < num_luts_per_clb; ++lut) {
             std::vector<int> perm;
+            char* error_line = &(lut_errors[position][lut * num_luts_per_clb]);
             //check if current function is compatible to a LUT at the destination
-            if (check_compatibility_lut(lut_errors[position], atom_ctx.nlist.block_truth_table(functions[fct]), &perm)) {
+            if (check_compatibility_lut(error_line, atom_ctx.nlist.block_truth_table(functions[fct]),
+                                        &perm, num_inputs_lut, (int) atom_ctx.nlist.block_truth_table(functions[fct]).begin()->size())) {
                 //add necessary permutation to mapping from fct to lut
                 cover.find(fct)->second.insert(cover.find(fct)->second.end(), Change_Entry(&perm, lut));
             }
@@ -479,12 +500,107 @@ bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors
         }
     }
     //check if a cover from luts and fcts exist and get the necessary permutations
-    return clb_coverable(map, &cover, functions.size());
+    return clb_coverable(map, &cover, (int) functions.size());
 }
+
 //Modified: added compatibility check for single function and LUT.
-bool check_compatibility_lut(const char* error_line, const std::vector<std::vector<vtr::LogicValue>> table, std::vector<int>* perm) {
-    //TODO
+int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTable table, std::vector<int>* perm, int num_inputs_lut, int num_inputs_fct) {
+    //if function requires more inputs than LUT has, its incompatible
+    if(num_inputs_fct > num_inputs_lut)
+        return -1;
+    //init permutation without changes
+    *perm = std::vector<int>();
+    for (int in = 0; in < num_inputs_lut; ++in) {
+        perm->insert(perm->end(), in);
+    }
+    //transform the truth table into a processable minterm form
+    AtomNetlist::TruthTable exp_table = expand_truth_table(table, num_inputs_fct);
+    std::vector<vtr::LogicValue> lut_mask = truth_table_to_lut_mask(exp_table, num_inputs_fct);
+    //get the number of cells in the lut
+    int num_lut_cells = (int) pow(2, num_inputs_lut);
+    int num_fct_cells = (int) pow(2, num_inputs_fct);
+    //first check: direct mapability
+    if(check_compatibility_lut_direct(error_line, lut_mask, num_fct_cells, 0)) {
+        return 0;
+    }
+    //if function needs fewer inputs than lut provides, there are more than one position where the lut can hold it
+    if (num_inputs_fct < num_inputs_lut) {
+        int num_tries = num_lut_cells / (int) lut_mask.size();
+        for (int cur_try = 1; cur_try < num_tries; ++cur_try) {
+            if(check_compatibility_lut_direct(error_line, lut_mask, num_fct_cells, cur_try))
+                return cur_try;
+            else {
+                if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells)) {
+                    return cur_try;
+                }
+            }
+        }
+        return -1;
+    }
+    else {
+        if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells)) {
+            return 0;
+        }
+        return -1;
+    }
+}
+
+//Modified: added check for one lut and one function cell by cell.
+bool check_compatibility_lut_direct(const char* error_line, std::vector<vtr::LogicValue> lut_mask, int num_fct_cells, int lut_offset) {
+    //test for every single cell if the function is mappable
+    for (int cell = 0; cell < num_fct_cells; ++cell) {
+        char cur_cell = error_line[cell + lut_offset];
+        //differ between fault type of lut-cell
+        switch (cur_cell) {
+            //Fault free cell: continue
+            case '0':
+                continue;
+            //Stuck-At-1 cell: check if matches lut mask
+            case '1': {
+                if(lut_mask[cell] == vtr::LogicValue::FALSE)
+                    return false;
+                continue;
+            }
+            //Stuck-At-0 cell: check if matches lut mask
+            case '2': {
+                if (lut_mask[cell] == vtr::LogicValue::TRUE)
+                    return false;
+                continue;
+            }
+            //Stuck-At-Undefined cell: not usable, break
+            default:
+                return false;
+        }
+    }
     return true;
+}
+
+//Modified: added check if a lut becomes mappable by permutation of its inputs
+//maximum of 6-input LUTs
+bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells){
+    auto& place_ctx = g_vpr_ctx.placement();
+    auto iter = place_ctx.permutations.begin();
+    //iterate over all possible permutations
+    for (int cur_perm_index = 0; cur_perm_index < place_ctx.permutations.size(); ++cur_perm_index) {
+        int p = std::stoi(iter->first);
+        int from = (p/10);
+        int to = (p%10);
+        //test, if permutation can be applied
+        //that is the case, if the inputs the permutation uses exist in the lut
+        if (!(from < num_inputs_fct && to < num_inputs_fct))
+            continue;
+        //apply permutation
+        int tmp = perm[from];
+        perm[from] = perm[to];
+        perm[to] = tmp;
+        AtomNetlist::TruthTable permuted_table = permute_truth_table(table, num_inputs_fct, perm);
+        std::vector<vtr::LogicValue> permuted_lut_mask = truth_table_to_lut_mask(permuted_table, num_inputs_fct);
+        //check if permutation brings success
+        if(check_compatibility_lut_direct(error_line, permuted_lut_mask, num_fct_cells, 0))
+            return true;
+        ++iter;
+    }
+    return false;
 }
 
 //Modified: added greedy-approach-based check if the clb can cover all the functions of the cluster at once.

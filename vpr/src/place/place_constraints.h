@@ -11,6 +11,7 @@
 #include "partition_region.h"
 #include "place_macro.h"
 #include "grid_tile_lookup.h"
+#include "atom_netlist_utils.h"
 
 #ifndef VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_
 #    define VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_
@@ -152,7 +153,9 @@ int get_floorplan_score(ClusterBlockId blk_id, PartitionRegion& pr, t_logical_bl
  * Modified: Added compatibility check between a cluster and a clb. Tries to permutate the input signals of the cluster, if necessary.
  */
 bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc);
-bool check_compatibility_lut(const char* error_line, const std::vector<std::vector<vtr::LogicValue>> table, std::vector<int>* perm);
+int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTable table, std::vector<int>* perm, int num_inputs_lut, int num_inputs_fct);
+bool check_compatibility_lut_direct(const char* error_line, std::vector<vtr::LogicValue> lut_mask, int num_fct_cells, int lut_offset);
+bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells);
 bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<Change_Entry>>* cover, int num_fcts);
 
 #endif /* VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_ */
