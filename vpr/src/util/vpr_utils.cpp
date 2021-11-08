@@ -2028,7 +2028,6 @@ void init_lut_permutations() {
 
     auto& mut_place_ctx = g_vpr_ctx.mutable_placement();
     int num_perms = 15;
-    int num_swaps_per_perm = 16;
 
     const std::string perms[15] = {"01", "02", "03", "04", "05", "12", "13", "14", "15", "23", "24", "25", "34", "35", "45"};
 

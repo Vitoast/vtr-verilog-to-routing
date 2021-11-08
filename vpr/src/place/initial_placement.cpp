@@ -31,7 +31,7 @@ static std::vector<std::vector<std::vector<t_pl_loc>>> legal_pos; /* [0..device_
 
 static int get_free_sub_tile(std::vector<std::vector<int>>& free_locations, int itype, std::vector<int> possible_sub_tiles);
 
-static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc head_pos, char** lut_errors);
+static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc head_pos, std::map<int, Change_Entry>* map, char** lut_errors);
 static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_macro, char** lut_errors);
 static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<std::vector<int>>& free_locations, const std::vector<t_pl_macro>& sorted_macros, char** lut_errors);
 
@@ -254,14 +254,16 @@ static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<st
 /* Place blocks that are NOT a part of any macro.
  * We'll randomly place each block in the clustered netlist, one by one.
  *
- * Modified: added handover of LUT error matrix*/
+ * Modified: added handover of LUT error matrix, added counter to avoid looping*/
 static void initial_placement_blocks(std::vector<std::vector<int>>& free_locations, enum e_pad_loc_type pad_loc_type, const std::vector<ClusterBlockId>& sorted_blocks, char** lut_errors) {
     auto& cluster_ctx = g_vpr_ctx.clustering();
     auto& place_ctx = g_vpr_ctx.mutable_placement();
 
     for (auto blk_id : sorted_blocks) {
         bool placed = false;
-        while (!placed) {
+        //decreasing counter to avoid infinite loop while search with a totally incompatible block
+        int countdown = 100;
+        while (!placed && countdown != 0) {
             /* -1 is a sentinel for a non-placed block, which the code in this routine will choose a location for.
              * If the x value is not -1, we assume something else has already placed this block and we should leave it there.
              * For example, if the user constrained it to a certain location, the block has already been placed.
@@ -328,6 +330,12 @@ static void initial_placement_blocks(std::vector<std::vector<int>>& free_locatio
 
                 placed = true;
             }
+            else
+                --countdown;
+        }
+        if(!placed) {
+            VPR_FATAL_ERROR(VPR_ERROR_PLACE,"Initial placement failed:\n"
+                            "Could not place block %s (#%zu) (No compatible location found).\n", cluster_ctx.clb_nlist.block_name(blk_id).c_str());
         }
     }
 }

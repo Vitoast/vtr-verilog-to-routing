@@ -291,14 +291,15 @@ struct ClusteringContext : public Context {
 
 //helping struct to save positions of a single swap of lut-cells
 struct Single_Swap {
-    Single_Swap(int a, int b);
+
     int from;
     int to;
+
+    Single_Swap(int a, int b) {
+        Single_Swap::from = a;
+        Single_Swap::to = b;
+    }
 };
-Single_Swap::Single_Swap(int a, int b) {
-    Single_Swap::from = a;
-    Single_Swap::to = b;
-}
 
 /**
  * @brief State relating to placement

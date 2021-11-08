@@ -20,14 +20,14 @@
  * Modified: Added struct to handle information about possibly necessary input permutations in a LUT.
  */
 struct Change_Entry {
-    Change_Entry(std::vector<int>* perm, int l);
     std::vector<int> permutation;
     int lut;
+
+    Change_Entry(std::vector<int>* perm, int l) {
+        permutation = *perm;
+        lut = l;
+    }
 };
-Change_Entry::Change_Entry(std::vector<int>* perm, int l) {
-    permutation = *perm;
-    lut = l;
-}
 
 /*
  * Check that placement of each block is within the floorplan constraint region of that block (if the block has any constraints).
@@ -155,7 +155,7 @@ int get_floorplan_score(ClusterBlockId blk_id, PartitionRegion& pr, t_logical_bl
 bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc);
 int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTable table, std::vector<int>* perm, int num_inputs_lut, int num_inputs_fct);
 bool check_compatibility_lut_direct(const char* error_line, std::vector<vtr::LogicValue> lut_mask, int num_fct_cells, int lut_offset);
-bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells);
-bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<Change_Entry>>* cover, int num_fcts);
+bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut);
+bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<Change_Entry>>* cover);
 
 #endif /* VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_ */

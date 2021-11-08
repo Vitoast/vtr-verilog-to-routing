@@ -482,13 +482,22 @@ bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors
         }
     }
     //check compatibility for each function in clb
-    for (int fct = 0; fct < functions.size(); ++fct) {
+    for (int fct = 0; fct < (int) functions.size(); ++fct) {
+        //if current truth table has only one entry it is a latch that can always be mapped and needs no consideration
+        if(atom_ctx.nlist.block_truth_table(functions[fct]).size() == 1) {
+            if(atom_ctx.nlist.block_truth_table(functions[fct]).begin()->size() == 1) {
+                continue;
+            }
+        }
+        cover.insert(cover.end(), std::pair<int, std::vector<Change_Entry>>(fct, std::vector<Change_Entry>()));
         for (int lut = 0; lut < num_luts_per_clb; ++lut) {
             std::vector<int> perm;
             char* error_line = &(lut_errors[position][lut * num_luts_per_clb]);
             //check if current function is compatible to a LUT at the destination
-            if (check_compatibility_lut(error_line, atom_ctx.nlist.block_truth_table(functions[fct]),
-                                        &perm, num_inputs_lut, (int) atom_ctx.nlist.block_truth_table(functions[fct]).begin()->size())) {
+            //subtract 1 of number of function inputs because output value is also saved in truth tables, and it is always single output
+            int assigned_lut = check_compatibility_lut(error_line, atom_ctx.nlist.block_truth_table(functions[fct]),
+                                                       &perm, num_inputs_lut, (int)atom_ctx.nlist.block_truth_table(functions[fct]).begin()->size() - 1);
+            if (assigned_lut != -1) {
                 //add necessary permutation to mapping from fct to lut
                 cover.find(fct)->second.insert(cover.find(fct)->second.end(), Change_Entry(&perm, lut));
             }
@@ -500,7 +509,7 @@ bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors
         }
     }
     //check if a cover from luts and fcts exist and get the necessary permutations
-    return clb_coverable(map, &cover, (int) functions.size());
+    return clb_coverable(map, &cover);
 }
 
 //Modified: added compatibility check for single function and LUT.
@@ -530,7 +539,7 @@ int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTabl
             if(check_compatibility_lut_direct(error_line, lut_mask, num_fct_cells, cur_try))
                 return cur_try;
             else {
-                if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells)) {
+                if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut)) {
                     return cur_try;
                 }
             }
@@ -538,7 +547,7 @@ int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTabl
         return -1;
     }
     else {
-        if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells)) {
+        if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut)) {
             return 0;
         }
         return -1;
@@ -577,11 +586,11 @@ bool check_compatibility_lut_direct(const char* error_line, std::vector<vtr::Log
 
 //Modified: added check if a lut becomes mappable by permutation of its inputs
 //maximum of 6-input LUTs
-bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells){
+bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut){
     auto& place_ctx = g_vpr_ctx.placement();
     auto iter = place_ctx.permutations.begin();
     //iterate over all possible permutations
-    for (int cur_perm_index = 0; cur_perm_index < place_ctx.permutations.size(); ++cur_perm_index) {
+    for (int cur_perm_index = 0; cur_perm_index < (int) place_ctx.permutations.size(); ++cur_perm_index) {
         int p = std::stoi(iter->first);
         int from = (p/10);
         int to = (p%10);
@@ -598,18 +607,25 @@ bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable&
         //check if permutation brings success
         if(check_compatibility_lut_direct(error_line, permuted_lut_mask, num_fct_cells, 0))
             return true;
+        //reset permutation
+        perm.clear();
+        for (int in = 0; in < num_inputs_lut; ++in) {
+            perm.insert(perm.end(), in);
+        }
         ++iter;
     }
     return false;
 }
 
 //Modified: added greedy-approach-based check if the clb can cover all the functions of the cluster at once.
-bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<Change_Entry>>* cover, int num_fcts) {
+bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<Change_Entry>>* cover) {
     if (cover->empty())
         return false;
     int min_fct = 0;
+    int num_fcts = (int) cover->size();
     for (int i = 0; i < num_fcts; ++i) {
         auto cur_fct = cover->begin();
+        min_fct = cur_fct->first;
         while (cur_fct != cover->end()) {
             if (cover->find(min_fct)->second.size() < cur_fct->second.size()) {
                min_fct = cur_fct->first;
@@ -622,6 +638,8 @@ bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<C
         else {
             //assign first matching lut to current function and save necessary permutations
             (*map).insert(std::pair<int, Change_Entry>(min_fct, cover->find(min_fct)->second[0]));
+            if ((int) map->size() == num_fcts)
+                break;
             //get index of lut that is mapped
             int assigned_lut = cover->find(min_fct)->second[0].lut;
             //delete mapped function from cover
@@ -633,6 +651,7 @@ bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<C
                 while (cur_lut != cur_fct->second.end()) {
                     if (cur_lut->lut == assigned_lut)
                         cur_fct->second.erase(cur_lut);
+                    ++cur_lut;
                 }
                 ++cur_fct;
             }
