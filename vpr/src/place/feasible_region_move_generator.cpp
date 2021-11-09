@@ -5,7 +5,7 @@
 #include "place_constraints.h"
 
 //Modified: added handover of LUT error matrix
-e_create_move FeasibleRegionMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities, std::map<int, Change_Entry>* map, char** lut_errors) {
+e_create_move FeasibleRegionMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities, std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors) {
     auto& place_ctx = g_vpr_ctx.placement();
     auto& cluster_ctx = g_vpr_ctx.clustering();
     auto& place_move_ctx = g_placer_ctx.mutable_move();
@@ -113,21 +113,21 @@ e_create_move FeasibleRegionMoveGenerator::propose_move(t_pl_blocks_to_be_moved&
     range_limiters.first_rlim = place_move_ctx.first_rlim;
 
     // Try to find a legal location inside the feasible region
-    if (!find_to_loc_median(cluster_from_type, from, &FR_coords, to, map, lut_errors)) {
+    if (!find_to_loc_median(cluster_from_type, from, &FR_coords, to, permutation_maps, lut_errors)) {
         /** If there is no legal location in the feasible region, calculate the center of the FR and try to find a legal location 
          *  in a range around this center.
          */
         t_pl_loc center;
         center.x = (FR_coords.xmin + FR_coords.xmax) / 2;
         center.y = (FR_coords.ymin + FR_coords.ymax) / 2;
-        if (!find_to_loc_centroid(cluster_from_type, from, center, range_limiters, to, map, lut_errors))
+        if (!find_to_loc_centroid(cluster_from_type, from, center, range_limiters, to, permutation_maps, lut_errors))
             return e_create_move::ABORT;
     }
 
     e_create_move create_move = ::create_move(blocks_affected, b_from, to);
 
     //Check that all of the blocks affected by the move would still be in a legal floorplan region after the swap
-    if (!floorplan_legal(blocks_affected)) {
+    if (!floorplan_legal(blocks_affected, lut_errors)) {
         return e_create_move::ABORT;
     }
 

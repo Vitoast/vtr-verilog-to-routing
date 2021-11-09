@@ -104,7 +104,7 @@ bool find_to_loc_uniform(t_logical_block_type_ptr type,
                          float rlim,
                          const t_pl_loc from,
                          t_pl_loc& to,
-                         std::map<int, Change_Entry>* map, char** lut_errors);
+                         std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors);
 
 // Accessor f_placer_breakpoint_reached
 // return true when a placer breakpoint is reached
@@ -127,7 +127,7 @@ void set_placer_breakpoint_reached(bool);
  *  @param limit_coords: the region where I can move the block to
  *  @param to_loc: the new location that the function picked for the block
  */
-bool find_to_loc_median(t_logical_block_type_ptr blk_type, const t_pl_loc& from_loc, const t_bb* limit_coords, t_pl_loc& to_loc, std::map<int, Change_Entry>* map, char** lut_errors);
+bool find_to_loc_median(t_logical_block_type_ptr blk_type, const t_pl_loc& from_loc, const t_bb* limit_coords, t_pl_loc& to_loc, std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors);
 
 /**
  * @brief Find a legal swap to location for the given type in a range around a specific location.
@@ -148,7 +148,8 @@ bool find_to_loc_centroid(t_logical_block_type_ptr blk_type,
                           const t_pl_loc& centeroid,
                           const t_range_limiters& range_limiters,
                           t_pl_loc& to_loc,
-                          std::map<int, Change_Entry>* map, char** lut_errors);
+                          std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps,
+                          char** lut_errors);
 
 std::string move_type_to_string(e_move_type);
 
@@ -172,7 +173,19 @@ void compressed_grid_to_loc(t_logical_block_type_ptr blk_type, int cx, int cy, t
  * cx_to, cy_to: the x and y coordinates of the new location on the compressed grid
  * is_median: true if this is called from find_to_loc_median
  */
-bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type, int min_cx, int max_cx, int min_cy, int max_cy, int delta_cx, int cx_from, int cy_from, int& cx_to, int& cy_to, bool is_median, std::map<int, Change_Entry>* map, char** lut_errors);
+bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type,
+                                             int min_cx,
+                                             int max_cx,
+                                             int min_cy,
+                                             int max_cy,
+                                             int delta_cx,
+                                             int cx_from,
+                                             int cy_from,
+                                             int& cx_to,
+                                             int& cy_to,
+                                             bool is_median,
+                                             std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps,
+                                             char** lut_errors);
 
 std::string e_move_result_to_string(e_move_result move_outcome);
 

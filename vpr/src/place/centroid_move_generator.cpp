@@ -5,7 +5,7 @@
 #include "place_constraints.h"
 
 //Modified: added handover of LUT error matrix
-e_create_move CentroidMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* /*criticalities*/, std::map<int, Change_Entry>* map, char** lut_errors) {
+e_create_move CentroidMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* /*criticalities*/, std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors) {
     /* Pick a random block to be swapped with another random block.   */
     ClusterBlockId b_from = pick_from_block();
     if (!b_from) {
@@ -33,14 +33,14 @@ e_create_move CentroidMoveGenerator::propose_move(t_pl_blocks_to_be_moved& block
     calculate_centroid_loc(b_from, false, centroid, NULL);
 
     /* Find a location near the weighted centroid_loc */
-    if (!find_to_loc_centroid(cluster_from_type, from, centroid, range_limiters, to, map, lut_errors)) {
+    if (!find_to_loc_centroid(cluster_from_type, from, centroid, range_limiters, to, permutation_maps, lut_errors)) {
         return e_create_move::ABORT;
     }
 
     e_create_move create_move = ::create_move(blocks_affected, b_from, to);
 
     //Check that all of the blocks affected by the move would still be in a legal floorplan region after the swap
-    if (!floorplan_legal(blocks_affected)) {
+    if (!floorplan_legal(blocks_affected, lut_errors)) {
         return e_create_move::ABORT;
     }
 

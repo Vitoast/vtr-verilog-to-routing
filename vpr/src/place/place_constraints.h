@@ -43,7 +43,7 @@ bool is_cluster_constrained(ClusterBlockId blk_id);
 /*
  * Check if the placement location would respect floorplan constraints of the block, if it has any
  */
-bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc, std::map<int, Change_Entry>* map, char** lut_errors);
+bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc, std::map<AtomBlockId, Change_Entry>* map, char** lut_errors);
 
 /*
  * Check whether any member of the macro has floorplan constraints
@@ -79,13 +79,11 @@ void propagate_place_constraints();
 
 void print_macro_constraint_error(const t_pl_macro& pl_macro);
 
-//TODO: MODIFY, hand change map and error matrix over
-inline bool floorplan_legal(const t_pl_blocks_to_be_moved& blocks_affected) {
+inline bool floorplan_legal(const t_pl_blocks_to_be_moved& blocks_affected, char** lut_errors) {
     bool floorplan_legal;
 
     for (int i = 0; i < blocks_affected.num_moved_blocks; i++) {
-        std::map<int, Change_Entry> map;
-        char** lut_errors;
+        std::map<AtomBlockId, Change_Entry> map;
         floorplan_legal = cluster_floorplanning_legal(blocks_affected.moved_blocks[i].block_num, blocks_affected.moved_blocks[i].new_loc, &map, lut_errors);
         if (!floorplan_legal) {
 #    ifdef VERBOSE
@@ -152,10 +150,10 @@ int get_floorplan_score(ClusterBlockId blk_id, PartitionRegion& pr, t_logical_bl
 /*
  * Modified: Added compatibility check between a cluster and a clb. Tries to permutate the input signals of the cluster, if necessary.
  */
-bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc);
+bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc);
 int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTable table, std::vector<int>* perm, int num_inputs_lut, int num_inputs_fct);
 bool check_compatibility_lut_direct(const char* error_line, std::vector<vtr::LogicValue> lut_mask, int num_fct_cells, int lut_offset);
 bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut);
-bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<Change_Entry>>* cover);
+bool clb_coverable(std::map<AtomBlockId, Change_Entry>* map, std::map<AtomBlockId, std::vector<Change_Entry>>* cover);
 
 #endif /* VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_ */

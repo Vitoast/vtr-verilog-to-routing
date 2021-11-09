@@ -3,7 +3,7 @@
 #include "place_constraints.h"
 
 //Modified: added handover of LUT error matrix
-e_create_move UniformMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& /*placer_opts*/, const PlacerCriticalities* /*criticalities*/, std::map<int, Change_Entry>* map, char** lut_errors) {
+e_create_move UniformMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& /*placer_opts*/, const PlacerCriticalities* /*criticalities*/, std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors) {
     /* Pick a random block to be swapped with another random block.   */
     ClusterBlockId b_from = pick_from_block();
     if (!b_from) {
@@ -19,7 +19,7 @@ e_create_move UniformMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks
 
     t_pl_loc to;
 
-    if (!find_to_loc_uniform(cluster_from_type, rlim, from, to, map, lut_errors)) {
+    if (!find_to_loc_uniform(cluster_from_type, rlim, from, to, permutation_maps, lut_errors)) {
         return e_create_move::ABORT;
     }
 
@@ -39,7 +39,7 @@ e_create_move UniformMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks
     e_create_move create_move = ::create_move(blocks_affected, b_from, to);
 
     //Check that all of the blocks affected by the move would still be in a legal floorplan region after the swap
-    if (!floorplan_legal(blocks_affected)) {
+    if (!floorplan_legal(blocks_affected, lut_errors)) {
         return e_create_move::ABORT;
     }
 

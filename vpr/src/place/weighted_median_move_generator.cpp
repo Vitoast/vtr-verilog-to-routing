@@ -9,7 +9,7 @@
 static void get_bb_cost_for_net_excluding_block(ClusterNetId net_id, ClusterBlockId block_id, ClusterPinId moving_pin_id, const PlacerCriticalities* criticalities, t_bb_cost* coords, bool& skip_net);
 
 //Modified: added handover of LUT error matrix
-e_create_move WeightedMedianMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities, std::map<int, Change_Entry>* map, char** lut_errors) {
+e_create_move WeightedMedianMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities, std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors) {
     auto& place_ctx = g_vpr_ctx.placement();
     auto& cluster_ctx = g_vpr_ctx.clustering();
 
@@ -100,14 +100,14 @@ e_create_move WeightedMedianMoveGenerator::propose_move(t_pl_blocks_to_be_moved&
     t_pl_loc w_median_point;
     w_median_point.x = (limit_coords.xmin + limit_coords.xmax) / 2;
     w_median_point.y = (limit_coords.ymin + limit_coords.ymax) / 2;
-    if (!find_to_loc_centroid(cluster_from_type, from, w_median_point, range_limiters, to, map, lut_errors)) {
+    if (!find_to_loc_centroid(cluster_from_type, from, w_median_point, range_limiters, to, permutation_maps, lut_errors)) {
         return e_create_move::ABORT;
     }
 
     e_create_move create_move = ::create_move(blocks_affected, b_from, to);
 
     //Check that all of the blocks affected by the move would still be in a legal floorplan region after the swap
-    if (!floorplan_legal(blocks_affected)) {
+    if (!floorplan_legal(blocks_affected, lut_errors)) {
         return e_create_move::ABORT;
     }
 

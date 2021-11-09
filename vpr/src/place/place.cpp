@@ -167,11 +167,19 @@ std::unique_ptr<FILE, decltype(&vtr::fclose)> f_move_stats_file(nullptr,
                                                                 vtr::fclose);
 
 /*
- * This 2D-Array holds information about the error status of each LUT-memory-cell.
+ * Modified: This 2D-Array holds information about the error status of each LUT-memory-cell.
  * 0 means fault-free, 1 stuck-at-1, 2 stuck-at-0 and 3 stuck-at-undefined.
  */
 char** lut_errors;
 int num_blocks;
+
+/*
+ * Modified: This map holds all current permutations of the clbs.
+ * Avoids messing up already permuted clbs with new permutations.
+ * Just used after initial placement is completed.
+ * Only permutations that are in the map after the placement are applied.
+ */
+std::map<AtomBlockId, Change_Entry> final_permutations;
 
 #ifdef VTR_ENABLE_DEBUG_LOGGIING
 #    define LOG_MOVE_STATS_HEADER()                               \
@@ -420,7 +428,7 @@ static void print_placement_move_types_stats(
     const MoveTypeStat& move_type_stat);
 
 static void free_error_matrix();
-
+static void apply_permutations();
 /*****************************************************************************/
 /*
  * Modified: added handover of LUT error matrix, added numclbs handover, added error init and free
@@ -529,9 +537,9 @@ void try_place(const t_placer_opts& placer_opts,
                                      directs, num_directs);
 
     vtr::ScopedStartFinishTimer timer("Placement");
-
+    final_permutations = std::map<AtomBlockId, Change_Entry>();
     initial_placement(placer_opts.pad_loc_type,
-                      placer_opts.constraints_file.c_str(), lut_errors);
+                      placer_opts.constraints_file.c_str(), &final_permutations, lut_errors);
 
 #ifdef ENABLE_ANALYTIC_PLACE
     /*
@@ -996,6 +1004,8 @@ void try_place(const t_placer_opts& placer_opts,
             p_runtime_ctx.f_update_td_costs_sum_nets_elapsed_sec,
             p_runtime_ctx.f_update_td_costs_total_elapsed_sec);
 
+    //Modified: added appliance of permutations and free the memory for the lut-faults.
+    apply_permutations();
     free_error_matrix();
 }
 
@@ -1312,7 +1322,7 @@ static void reset_move_nets(int num_nets_affected) {
  *
  * @return Whether the block swap is accepted, rejected or aborted.
  *
- * Modified: added handover of LUT error matrix
+ * Modified: added handover of LUT error matrix and filling of the permutation map
  */
 static e_move_result try_swap(const t_annealing_state* state,
                               t_placer_costs* costs,
@@ -1365,17 +1375,21 @@ static e_move_result try_swap(const t_annealing_state* state,
     }
 
     e_create_move create_move_outcome;
-    std::map<int, Change_Entry> map;
+    //these maps will hold the necessary permutations that must be applied, if the swap is executed
+    std::map<AtomBlockId, Change_Entry> map_destination;
+    std::map<AtomBlockId, Change_Entry> map_source;
+    std::vector<std::map<AtomBlockId, Change_Entry>> permutation_maps;
+    permutation_maps.insert(permutation_maps.end(), map_destination);
+    permutation_maps.insert(permutation_maps.end(), map_source);
 
     //When manual move toggle button is active, the manual move window asks the user for input.
     if (manual_move_enabled) {
 #ifndef NO_GRAPHICS
-        create_move_outcome = manual_move_display_and_propose(manual_move_generator, blocks_affected, move_type, rlim, placer_opts, criticalities, &map, lut_errors);
+        create_move_outcome = manual_move_display_and_propose(manual_move_generator, blocks_affected, move_type, rlim, placer_opts, criticalities, &permutation_maps, lut_errors);
 #endif //NO_GRAPHICS
     } else {
         //Generate a new move (perturbation) used to explore the space of possible placements
-        //TODO: init and hand over change map
-        create_move_outcome = move_generator.propose_move(blocks_affected, move_type, rlim, placer_opts, criticalities, &map, lut_errors);
+        create_move_outcome = move_generator.propose_move(blocks_affected, move_type, rlim, placer_opts, criticalities, &permutation_maps, lut_errors);
     }
 
     ++move_type_stat.num_moves[(int)move_type];
@@ -1408,8 +1422,37 @@ static e_move_result try_swap(const t_annealing_state* state,
          */
 
         /* Update the block positions */
-        //TODO: Add permutation with change map
-        apply_move_blocks(blocks_affected);//, &map);
+        apply_move_blocks(blocks_affected);
+
+        //Modified: Add permutations to local map
+        //get a reference to know if no permutation was applied
+        std::vector<int> std_permutation = std::vector<int>();
+        for (int in = 0; in < (int) permutation_maps[0].begin()->second.permutation.size(); ++in) {
+            std_permutation.insert(std_permutation.end(), in);
+        }
+
+        bool permuted;
+        //test permutations of source and target clb
+        //do it one time for source and one time for destination clb
+        for (int i = 0; i < 2; ++i) {
+            //iterate over all atoms in clb
+            for (auto & iter : permutation_maps[i]) {
+                //look if AtomBlock has a current permutation
+                if (final_permutations.find(iter.first) != final_permutations.end()) {
+                    //erase old permutation entry
+                    final_permutations.erase(iter.first);
+                }
+                permuted = false;
+                //test if permutation is applied
+                for (int entry : iter.second.permutation) {
+                    if(entry != std_permutation[i])
+                        permuted = true;
+                }
+                //if permuted, add to map, else do nothing
+                if (permuted)
+                    final_permutations.insert(std::pair<AtomBlockId , Change_Entry>(iter.first, iter.second));
+            }
+        }
 
         //Find all the nets affected by this swap and update the wiring costs.
         //This cost value doesn't depend on the timing info.
@@ -3091,4 +3134,8 @@ void free_error_matrix() {
         delete[] lut_errors[i];
     }
     delete[] lut_errors; /* Free the error list */
+}
+
+static void apply_permutations() {
+
 }

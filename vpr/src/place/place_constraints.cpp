@@ -23,7 +23,7 @@ int check_placement_floorplanning(char** lut_errors) {
 
     for (auto blk_id : cluster_ctx.clb_nlist.blocks()) {
         auto loc = place_ctx.block_locs[blk_id].loc;
-        std::map<int, Change_Entry> map;
+        std::map<AtomBlockId, Change_Entry> map;
         if (!cluster_floorplanning_legal(blk_id, loc, &map, lut_errors)) {
             error++;
             VTR_LOG_ERROR("Block %zu is not in correct floorplanning region.\n", size_t(blk_id));
@@ -202,7 +202,7 @@ void propagate_place_constraints() {
  *
  * Modified: added handover of LUT error matrix
  */
-bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc, std::map<int, Change_Entry>* map, char** lut_errors) {
+bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc, std::map<AtomBlockId, Change_Entry>* map, char** lut_errors) {
     auto& floorplanning_ctx = g_vpr_ctx.floorplanning();
 
     bool floorplanning_good = false;
@@ -451,10 +451,11 @@ int get_floorplan_score(ClusterBlockId blk_id, PartitionRegion& pr, t_logical_bl
 }
 
 //Modified: added compatibility check between a packed cluster and a physical clb.
-bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc) {
+bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc) {
     //clear map to avoid old values
     (*map).clear();
-    std::map<int, std::vector<Change_Entry>> cover;
+    //map to save all possible locations for functions in the clb
+    std::map<AtomBlockId, std::vector<Change_Entry>> cover;
     auto& atom_ctx = g_vpr_ctx.atom();
     //get atoms assigned to current clb
     const std::vector<AtomBlockId> functions = atom_ctx.lookup.clb_atom(blk_id);
@@ -482,21 +483,29 @@ bool check_compatibility_clb(std::map<int, Change_Entry>* map, char** lut_errors
         }
     }
     //check compatibility for each function in clb
-    for (int fct = 0; fct < (int) functions.size(); ++fct) {
+    int num_inputs_fct = 0;
+    for (auto fct : functions) {
         //if current truth table has only one entry it is a latch that can always be mapped and needs no consideration
-        if(atom_ctx.nlist.block_truth_table(functions[fct]).size() == 1) {
-            if(atom_ctx.nlist.block_truth_table(functions[fct]).begin()->size() == 1) {
+        if(atom_ctx.nlist.block_truth_table(fct).size() == 1) {
+            if(atom_ctx.nlist.block_truth_table(fct).begin()->size() == 1) {
                 continue;
             }
         }
-        cover.insert(cover.end(), std::pair<int, std::vector<Change_Entry>>(fct, std::vector<Change_Entry>()));
+        //if current function is always 1 or 0 the truthtable is empty and this case must be handled specially
+        if(atom_ctx.nlist.block_truth_table(fct).empty()) {
+            num_inputs_fct = num_inputs_lut;
+        }
+        else {
+            num_inputs_fct = (int) atom_ctx.nlist.block_truth_table(fct).begin()->size() - 1;
+        }
+        cover.insert(cover.end(), std::pair<AtomBlockId, std::vector<Change_Entry>>(fct, std::vector<Change_Entry>()));
         for (int lut = 0; lut < num_luts_per_clb; ++lut) {
             std::vector<int> perm;
             char* error_line = &(lut_errors[position][lut * num_luts_per_clb]);
             //check if current function is compatible to a LUT at the destination
             //subtract 1 of number of function inputs because output value is also saved in truth tables, and it is always single output
-            int assigned_lut = check_compatibility_lut(error_line, atom_ctx.nlist.block_truth_table(functions[fct]),
-                                                       &perm, num_inputs_lut, (int)atom_ctx.nlist.block_truth_table(functions[fct]).begin()->size() - 1);
+            int assigned_lut = check_compatibility_lut(error_line, atom_ctx.nlist.block_truth_table(fct),
+                                                       &perm, num_inputs_lut, num_inputs_fct);
             if (assigned_lut != -1) {
                 //add necessary permutation to mapping from fct to lut
                 cover.find(fct)->second.insert(cover.find(fct)->second.end(), Change_Entry(&perm, lut));
@@ -618,10 +627,10 @@ bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable&
 }
 
 //Modified: added greedy-approach-based check if the clb can cover all the functions of the cluster at once.
-bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<Change_Entry>>* cover) {
+bool clb_coverable(std::map<AtomBlockId, Change_Entry>* map, std::map<AtomBlockId, std::vector<Change_Entry>>* cover) {
     if (cover->empty())
         return false;
-    int min_fct = 0;
+    AtomBlockId min_fct;
     int num_fcts = (int) cover->size();
     for (int i = 0; i < num_fcts; ++i) {
         auto cur_fct = cover->begin();
@@ -637,7 +646,7 @@ bool clb_coverable(std::map<int, Change_Entry>* map, std::map<int, std::vector<C
             return false;
         else {
             //assign first matching lut to current function and save necessary permutations
-            (*map).insert(std::pair<int, Change_Entry>(min_fct, cover->find(min_fct)->second[0]));
+            (*map).insert(std::pair<AtomBlockId, Change_Entry>(min_fct, cover->find(min_fct)->second[0]));
             if ((int) map->size() == num_fcts)
                 break;
             //get index of lut that is mapped
