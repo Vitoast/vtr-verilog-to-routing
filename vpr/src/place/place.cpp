@@ -498,8 +498,8 @@ void try_place(const t_placer_opts& placer_opts,
     num_swap_aborted = 0;
     num_ts_called = 0;
 
-    /* Read in the information about the faulty LUTs, if necessary. */
-    bool consider_faulty_luts = true; //TODO: add to options
+    /* Modified: Read in the information about the faulty LUTs, if necessary. */
+    bool consider_faulty_luts = g_vpr_ctx.placement().consider_faulty_luts;
     if(consider_faulty_luts) {
         read_lut_error_information(&lut_errors, &num_blocks);
     }
@@ -2740,7 +2740,7 @@ static void alloc_and_load_for_fast_cost_update(float place_cost_exp) {
 }
 
 /*
- * Modified: added handover of LUT error matrix
+ * Modified: added consideration of LUT error matrix
  */
 static void check_place(const t_placer_costs& costs,
                         const PlaceDelayModel* delay_model,

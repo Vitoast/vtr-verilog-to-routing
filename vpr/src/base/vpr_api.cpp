@@ -382,9 +382,9 @@ bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
 
     bool generate_errors = true;//TODO: add to options
     if(generate_errors) {
-        double sa1 = 0.0;
-        double sa0 = 0.0;
-        double sau = 0.0;
+        double sa1 = 0.01;
+        double sa0 = 0.002;
+        double sau = 0.001;
         generate_device_faults(sa0, sa1, sau);
     }
 
@@ -633,10 +633,16 @@ bool vpr_place_flow(t_vpr_setup& vpr_setup, const t_arch& arch) {
     VTR_LOG("\n");
     const auto& placer_opts = vpr_setup.PlacerOpts;
     const auto& filename_opts = vpr_setup.FileNameOpts;
+    //TODO: add to optinos
+    g_vpr_ctx.mutable_placement().consider_faulty_luts = true;
+    g_vpr_ctx.mutable_placement().permutation_depth = 0;
+
     if (placer_opts.doPlacement == STAGE_SKIP) {
         //pass
     } else {
-        init_lut_permutations();
+        //if faulty luts should be considered, we must load the permutation information
+        if(g_vpr_ctx.placement().consider_faulty_luts)
+            init_lut_permutations();
 
         if (placer_opts.doPlacement == STAGE_DO) {
             //Do the actual placement

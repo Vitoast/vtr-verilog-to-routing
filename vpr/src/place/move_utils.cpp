@@ -871,15 +871,17 @@ bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type,
                 auto& place_ctx = g_vpr_ctx.placement();
                 ClusterBlockId blk_id = place_ctx.grid_blocks[from_loc.x][from_loc.y].blocks.at(from_loc.sub_tile);
                 //if source block is empty, it is always compatible
-                if (blk_id == EMPTY_BLOCK_ID) {
+                //if faulty LUTs should not be considered, there is no need for further copmutation
+                if (blk_id == EMPTY_BLOCK_ID || !g_vpr_ctx.placement().consider_faulty_luts) {
                     return true;
                 }
                 //check if source block is compatible ro destination location
                 legal = check_compatibility_clb(&((*permutation_maps)[0]), lut_errors, blk_id, to_loc);
                 //check if destination block is compatible with source location
-                bool legal_reverse = false;
                 if(legal) {
                     ClusterBlockId reverse_blk_id = place_ctx.grid_blocks[to_loc.x][to_loc.y].blocks.at(to_loc.sub_tile);
+                    if(reverse_blk_id == EMPTY_BLOCK_ID)
+                        return true;
                     legal = check_compatibility_clb(&((*permutation_maps)[1]), lut_errors, reverse_blk_id, from_loc);
                 }
             }

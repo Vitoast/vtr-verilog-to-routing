@@ -14,7 +14,7 @@
 
 /*checks that each block's location is compatible with its floorplanning constraints if it has any
  *
- * Modified: added handover of LUT error matrix
+ * Modified: added handover and consideration of LUT error matrix
  * */
 int check_placement_floorplanning(char** lut_errors) {
     int error = 0;
@@ -209,9 +209,20 @@ bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc, std
 
     bool cluster_constrained = is_cluster_constrained(blk_id);
 
+    //not constrained so will not have floorplanning issues
     if (!cluster_constrained) {
-        //not constrained so will not have floorplanning issues
-        floorplanning_good = check_compatibility_clb(map, lut_errors, blk_id, loc);
+        //if block is empty it is always compatible
+        if(blk_id == EMPTY_BLOCK_ID) {
+            map->clear();
+            return true;
+        }
+        //we need compatibility check only if flag for consideration is set
+        if (g_vpr_ctx.placement().consider_faulty_luts) {
+            floorplanning_good = check_compatibility_clb(map, lut_errors, blk_id, loc);
+        }
+        else {
+            floorplanning_good = true;
+        }
     } else {
         PartitionRegion pr = floorplanning_ctx.cluster_constraints[blk_id];
         bool in_pr = pr.is_loc_in_part_reg(loc);
@@ -219,7 +230,18 @@ bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc, std
         //if location is in partitionregion, floorplanning is respected
         //if not it is not
         if (in_pr) {
-            floorplanning_good = check_compatibility_clb(map, lut_errors, blk_id, loc);
+            //if block is empty it is always compatible
+            if(blk_id == EMPTY_BLOCK_ID) {
+                map->clear();
+                return true;
+            }
+            //we need compatibility check only if flag for consideration is set
+            if (g_vpr_ctx.placement().consider_faulty_luts) {
+                floorplanning_good = check_compatibility_clb(map, lut_errors, blk_id, loc);
+            }
+            else {
+                return true;
+            }
         } else {
 #ifdef VERBOSE
             VTR_LOG("Block %zu did not pass cluster_floorplanning_check \n", size_t(blk_id));
@@ -451,6 +473,7 @@ int get_floorplan_score(ClusterBlockId blk_id, PartitionRegion& pr, t_logical_bl
 }
 
 //Modified: added compatibility check between a packed cluster and a physical clb.
+//Precondition: clb must not be empty block
 bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc) {
     //clear map to avoid old values
     (*map).clear();
@@ -491,7 +514,8 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
                 continue;
             }
         }
-        //if current function is always 1 or 0 the truthtable is empty and this case must be handled specially
+        //if current function is always 1 or 0 the truthtable could be empty depending if it is on- or off-set encoded
+        //this case must be handled specially
         if(atom_ctx.nlist.block_truth_table(fct).empty()) {
             num_inputs_fct = num_inputs_lut;
         }
@@ -500,7 +524,7 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
         }
         cover.insert(cover.end(), std::pair<AtomBlockId, std::vector<Change_Entry>>(fct, std::vector<Change_Entry>()));
         for (int lut = 0; lut < num_luts_per_clb; ++lut) {
-            std::vector<int> perm;
+            std::vector<int> perm = std::vector<int>(num_inputs_lut);
             char* error_line = &(lut_errors[position][lut * num_luts_per_clb]);
             //check if current function is compatible to a LUT at the destination
             //subtract 1 of number of function inputs because output value is also saved in truth tables, and it is always single output
@@ -548,7 +572,7 @@ int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTabl
             if(check_compatibility_lut_direct(error_line, lut_mask, num_fct_cells, cur_try))
                 return cur_try;
             else {
-                if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut)) {
+                if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut, g_vpr_ctx.placement().permutation_depth)) {
                     return cur_try;
                 }
             }
@@ -556,7 +580,7 @@ int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTabl
         return -1;
     }
     else {
-        if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut)) {
+        if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut, g_vpr_ctx.placement().permutation_depth)) {
             return 0;
         }
         return -1;
@@ -595,7 +619,7 @@ bool check_compatibility_lut_direct(const char* error_line, std::vector<vtr::Log
 
 //Modified: added check if a lut becomes mappable by permutation of its inputs
 //maximum of 6-input LUTs
-bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut){
+bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut, int permutation_depth){
     auto& place_ctx = g_vpr_ctx.placement();
     auto iter = place_ctx.permutations.begin();
     //iterate over all possible permutations
@@ -616,6 +640,11 @@ bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable&
         //check if permutation brings success
         if(check_compatibility_lut_direct(error_line, permuted_lut_mask, num_fct_cells, 0))
             return true;
+        //if there should be deeper permutations considered, try to find permutation of current state recursively
+        if(permutation_depth > 0) {
+            if(try_find_permutation(error_line, table, perm, num_inputs_fct, num_fct_cells, num_inputs_lut, permutation_depth - 1))
+                return true;
+        }
         //reset permutation
         perm.clear();
         for (int in = 0; in < num_inputs_lut; ++in) {
@@ -632,9 +661,11 @@ bool clb_coverable(std::map<AtomBlockId, Change_Entry>* map, std::map<AtomBlockI
         return false;
     AtomBlockId min_fct;
     int num_fcts = (int) cover->size();
+    //one iteration per function is necessary
     for (int i = 0; i < num_fcts; ++i) {
         auto cur_fct = cover->begin();
         min_fct = cur_fct->first;
+        //search for function that has currently the worst compatibility
         while (cur_fct != cover->end()) {
             if (cover->find(min_fct)->second.size() < cur_fct->second.size()) {
                min_fct = cur_fct->first;
@@ -658,8 +689,12 @@ bool clb_coverable(std::map<AtomBlockId, Change_Entry>* map, std::map<AtomBlockI
             while (cur_fct != cover->end()) {
                 auto cur_lut = cur_fct->second.begin();
                 while (cur_lut != cur_fct->second.end()) {
-                    if (cur_lut->lut == assigned_lut)
+                    //delete entry in other function with same lut
+                    if (cur_lut->lut == assigned_lut) {
                         cur_fct->second.erase(cur_lut);
+                        //can leave this map, cover contains for every function each lut only once
+                        break;
+                    }
                     ++cur_lut;
                 }
                 ++cur_fct;

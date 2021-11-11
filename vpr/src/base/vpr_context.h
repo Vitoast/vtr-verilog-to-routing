@@ -340,6 +340,19 @@ struct PlacementContext : public Context {
      * Has information up to a 6-LUT.
      */
      std::map<std::string, Single_Swap*> permutations;
+
+     /**
+      * Is true if faulty memory cells in the LUTs should be considered while placement.
+      */
+      bool consider_faulty_luts;
+
+      /**
+       * Tells how deep permutations in order to map to a faulty LUT can be applied.
+       * If it is 0, only 2 inputs are permuted.
+       * If it is 1, then possibly 2-4.
+       * And so on.
+       */
+       int permutation_depth;
 };
 
 /**

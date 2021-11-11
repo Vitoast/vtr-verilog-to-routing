@@ -130,12 +130,21 @@ static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc he
         }
     }
     //if makro is placed, add the necessary permutations to the map
-    //TODO: exclude non permutations
     if(macro_can_be_placed) {
         //save permutation of inputs
         for (const auto& makro_perm : permutations) {
-            for (auto& iter : makro_perm)
-                final_perms->insert(final_perms->end(), std::pair<AtomBlockId, Change_Entry>(iter.first, iter.second));
+            for (auto iter : makro_perm) {
+                bool permuted = false;
+                //exclude non permutations
+                for (int i = 0; i < (int) iter.second.permutation.size(); ++i) {
+                    if (i != iter.second.permutation[i]) {
+                        permuted = true;
+                        break;
+                    }
+                }
+                if (permuted)
+                    final_perms->insert(final_perms->end(), std::pair<AtomBlockId, Change_Entry>(iter.first, iter.second));
+            }
         }
     }
     return (macro_can_be_placed);
@@ -320,9 +329,18 @@ static void initial_placement_blocks(std::vector<std::vector<int>>& free_locatio
 
             if (floorplan_good) {
                 //save permutation of inputs
-                //TODO: exclude non permutations
-                for(auto & iter : map)
-                    final_perms->insert(final_perms->end(), std::pair<AtomBlockId, Change_Entry>(iter.first, iter.second));
+                for(auto & iter : map) {
+                    bool permuted = false;
+                    //exclude non permutations
+                    for (int i = 0; i < (int) iter.second.permutation.size(); ++i) {
+                        if (i != iter.second.permutation[i]) {
+                            permuted = true;
+                            break;
+                        }
+                    }
+                    if(permuted)
+                        final_perms->insert(final_perms->end(), std::pair<AtomBlockId, Change_Entry>(iter.first, iter.second));
+                }
 
                 place_ctx.grid_blocks[to.x][to.y].blocks[to.sub_tile] = blk_id;
                 place_ctx.grid_blocks[to.x][to.y].usage++;

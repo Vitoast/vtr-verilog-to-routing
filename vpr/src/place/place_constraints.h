@@ -153,7 +153,7 @@ int get_floorplan_score(ClusterBlockId blk_id, PartitionRegion& pr, t_logical_bl
 bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lut_errors, ClusterBlockId blk_id, const t_pl_loc& loc);
 int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTable table, std::vector<int>* perm, int num_inputs_lut, int num_inputs_fct);
 bool check_compatibility_lut_direct(const char* error_line, std::vector<vtr::LogicValue> lut_mask, int num_fct_cells, int lut_offset);
-bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut);
+bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut, int permutation_depth);
 bool clb_coverable(std::map<AtomBlockId, Change_Entry>* map, std::map<AtomBlockId, std::vector<Change_Entry>>* cover);
 
 #endif /* VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_ */
