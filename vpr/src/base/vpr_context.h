@@ -353,6 +353,11 @@ struct PlacementContext : public Context {
        * And so on.
        */
        int permutation_depth;
+
+       /**
+        * This saves all not compatible CLB Function pairs that occur to avoid double computation.
+        */
+       std::map<ClusterBlockId, std::vector<t_pl_loc>> incompatible_mappings;
 };
 
 /**

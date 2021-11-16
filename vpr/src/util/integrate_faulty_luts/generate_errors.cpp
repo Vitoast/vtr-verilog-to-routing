@@ -108,7 +108,7 @@ void generate_device_faults(double sa1,
             data << endl;
         }
     }
-    VTR_LOG("File with random faults in LUT-memory-cells was created.\n");
+    VTR_LOG("# File with random faults in LUT-memory-cells was created.\n");
     data.close();
 }
 
@@ -147,5 +147,5 @@ void read_lut_error_information(char*** lut_errors, int* num_blocks) {
             ++j;
         }
     }
-    VTR_LOG("Information about faulty LUT-memory-cells were read in.\n");
+    VTR_LOG("# Information about faulty LUT-memory-cells were read in.\n");
 }
