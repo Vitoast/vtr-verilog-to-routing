@@ -27,6 +27,7 @@
 #include "compressed_grid.h"
 #include "metadata_storage.h"
 #include "vpr_constraints.h"
+#include "generate_errors.h"
 
 /**
  * @brief A Context is collection of state relating to a particular part of VPR
@@ -136,6 +137,12 @@ struct DeviceContext : public Context {
      *        physical tiles to logical blocks mapping
      */
     bool has_multiple_equivalent_tiles;
+
+    /**
+     * variables needed for error-considering placement.
+     */
+    int num_luts_per_clb;
+    int lut_size;
 
     /*******************************************************************
      * Routing related
@@ -357,7 +364,7 @@ struct PlacementContext : public Context {
        /**
         * This saves all not compatible CLB Function pairs that occur to avoid double computation.
         */
-       std::map<ClusterBlockId, std::vector<t_pl_loc>> incompatible_mappings;
+       std::map<ClusterBlockId, std::vector<std::pair<t_pl_loc, std::map<AtomBlockId, Change_Entry>>>> compatibility_mappings;
 };
 
 /**

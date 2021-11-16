@@ -9,6 +9,20 @@
 #ifndef VTR_VERILOG_TO_ROUTING_GENERATE_ERRORS_H
 #define VTR_VERILOG_TO_ROUTING_GENERATE_ERRORS_H
 
+/**
+ * Modified: Added struct to handle information about possibly necessary input permutations in a LUT.
+ * Definition was outlined here to avoid messing up the imports.
+ */
+struct Change_Entry {
+    std::vector<int> permutation;
+    int lut;
+
+    Change_Entry(std::vector<int>* perm, int l) {
+        permutation = *perm;
+        lut = l;
+    }
+};
+
 /*
  * This is used to generate the LUT-error file by given probabilities for each fault-type.
  */

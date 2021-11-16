@@ -67,6 +67,9 @@ void generate_device_faults(double sa1,
             }
         }
 
+        device_ctx.num_luts_per_clb = num_luts_per_clb;
+        device_ctx.lut_size = lut_size;
+
         //print header to file
         data << "This represents fault types of Bits of LUTs of CLBs (0: FF, 1: SA1, 2:SA0, 3:SAU). Number of blocks in the grid and LUTs per CLB:" << endl;
         data << num_blocks << endl;

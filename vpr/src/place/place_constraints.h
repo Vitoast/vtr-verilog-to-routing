@@ -12,22 +12,12 @@
 #include "place_macro.h"
 #include "grid_tile_lookup.h"
 #include "atom_netlist_utils.h"
+#include "generate_errors.h"
 
 #ifndef VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_
 #    define VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_
 
-/**
- * Modified: Added struct to handle information about possibly necessary input permutations in a LUT.
- */
-struct Change_Entry {
-    std::vector<int> permutation;
-    int lut;
 
-    Change_Entry(std::vector<int>* perm, int l) {
-        permutation = *perm;
-        lut = l;
-    }
-};
 
 /*
  * Check that placement of each block is within the floorplan constraint region of that block (if the block has any constraints).

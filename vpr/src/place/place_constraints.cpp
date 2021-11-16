@@ -480,33 +480,37 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
     //map to save all possible locations for functions in the clb
     std::map<AtomBlockId, std::vector<Change_Entry>> cover;
     auto& atom_ctx = g_vpr_ctx.atom();
+    auto& device_ctx = g_vpr_ctx.device();
+    auto& place_ctx = g_vpr_ctx.mutable_placement();
+
+    //TODO: check if given block is a clb, otherwise it is always compatible
+
+    auto clb = place_ctx.compatibility_mappings.find(blk_id);
+    //search map of already found incompatible pairs for current mapping
+    if (clb != place_ctx.compatibility_mappings.end()) {
+        auto location = clb->second.begin();
+        while (location != clb->second.end()) {
+            //if map contains the clb with the same coordinates it has saved the compatibility
+            if(location->first.x == loc.x && location->first.y == loc.y && location->first.sub_tile == loc.sub_tile) {
+                //if map is empty, it is incompatible
+                if(location->second.empty())
+                    return false;
+                (*map) = location->second;
+            }
+            ++location;
+        }
+    }
+
     //get atoms assigned to current clb
     const std::vector<AtomBlockId> functions = atom_ctx.lookup.clb_atom(blk_id);
     //get index of block belonging to destination of placement
-    auto& device_ctx = g_vpr_ctx.device();
     unsigned long position = loc.x * device_ctx.grid.width() + loc.y;
     //search for the information about the size and number of luts in the clb
-    int num_luts_per_clb = 0;
-    int num_inputs_lut = 0;
-    for (const auto& log_type : device_ctx.logical_block_types) {
-        const auto& type = log_type.pb_type;
-        //if "clb" found, get information
-        if (strcmp(log_type.name, "clb") == 0) {
-            //iterate over all modes of the CLB and extract number of included logic parts (LUTs)
-            //use maximum number of parts in modes
-            for (int j = 0; j < type->num_modes; ++j) {
-                for (int k = 0; k < type->modes[j].num_pb_type_children; ++k) {
-                    if (type->modes[j].pb_type_children[k].num_pb > num_luts_per_clb) {
-                        num_luts_per_clb = type->modes[j].pb_type_children[k].num_pb;
-                        num_inputs_lut = type->modes[j].pb_type_children[k].num_input_pins;
-                    }
-                }
-            }
-            break;
-        }
-    }
+    int num_luts_per_clb = device_ctx.num_luts_per_clb;
+    int num_inputs_lut = device_ctx.lut_size;
+
     //check compatibility for each function in clb
-    int num_inputs_fct = 0;
+    int num_inputs_fct;
     for (auto fct : functions) {
         //if current truth table has only one entry it is a latch that can always be mapped and needs no consideration
         if(atom_ctx.nlist.block_truth_table(fct).size() == 1) {
@@ -542,7 +546,21 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
         }
     }
     //check if a cover from luts and fcts exist and get the necessary permutations
-    return clb_coverable(map, &cover);
+    bool coverable = clb_coverable(map, &cover);
+    //empty map symbolizes incompatibility
+    if(!coverable)
+        map->clear();
+    //add the compatibility of this combination to the global map:
+    //initialize location vector, if there is none
+    if (clb == place_ctx.compatibility_mappings.end()) {
+        std::vector<std::pair<t_pl_loc, std::map<AtomBlockId, Change_Entry>>> vec;
+        vec.insert(vec.end(), std::pair<t_pl_loc, std::map<AtomBlockId, Change_Entry>>(loc, *map));
+        place_ctx.compatibility_mappings.insert(std::pair<ClusterBlockId, std::vector<std::pair<t_pl_loc, std::map<AtomBlockId, Change_Entry>>>>(blk_id, vec));
+    }
+    //otherwise insert the new mapping-pair
+    else
+        clb->second.insert(clb->second.end(), std::pair<t_pl_loc, std::map<AtomBlockId, Change_Entry>>(loc, *map));
+    return coverable;
 }
 
 //Modified: added compatibility check for single function and LUT.
