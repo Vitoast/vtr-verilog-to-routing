@@ -51,8 +51,8 @@ void generate_device_faults(double sa1,
         //iterate over all block types in the device to search for CLBs
         for (const auto& log_type : device_ctx.logical_block_types) {
             const auto& type = log_type.pb_type;
-            //if "clb" found, get information
-            if (strcmp(log_type.name, "clb") == 0) {
+            //if type clb found, get information
+            if(pb_type_contains_blif_model(type, ".names")) {
                 //iterate over all modes of the CLB and extract number of included logic parts (LUTs)
                 //use maximum number of parts in modes
                 for (int j = 0; j < type->num_modes; ++j) {

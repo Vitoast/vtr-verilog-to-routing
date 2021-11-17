@@ -635,7 +635,8 @@ bool vpr_place_flow(t_vpr_setup& vpr_setup, const t_arch& arch) {
     const auto& filename_opts = vpr_setup.FileNameOpts;
     //TODO: add to optinos
     g_vpr_ctx.mutable_placement().consider_faulty_luts = true;
-    g_vpr_ctx.mutable_placement().permutation_depth = 0;
+    //maximum number of swaps in the permutations
+    g_vpr_ctx.mutable_placement().permutation_depth = 1;
 
     if (placer_opts.doPlacement == STAGE_SKIP) {
         //pass

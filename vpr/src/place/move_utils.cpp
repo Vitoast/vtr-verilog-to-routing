@@ -864,6 +864,7 @@ bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type,
             if (cx_from == cx_to && cy_from == cy_to) {
                 continue; //Same from/to location -- try again for new y-position
             } else {
+                //check if the blocks assigned to the location of the swap can be assigned to the other one
                 t_pl_loc to_loc = t_pl_loc();
                 t_pl_loc from_loc = t_pl_loc();
                 compressed_grid_to_loc(type, cx_to, cy_to, to_loc);

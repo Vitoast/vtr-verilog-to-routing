@@ -3211,8 +3211,23 @@ static void apply_permutations() {
             int cluster_pin_idx_from = phys_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster;
             int cluster_pin_idx_to = phys_bl->pb_graph_node->input_pins[0][current_permutation.second.permutation[input]].pin_count_in_cluster;
             //if swap is necessary, it is performed
-            if(cluster_pin_idx_to != cluster_pin_idx_from)
+            if(cluster_pin_idx_to != cluster_pin_idx_from) {
+                //if pin that should be moved is unconnected, target must be removed from list
+                if (inputs_reference_node.find(cluster_pin_idx_from) == inputs_reference_node.end()) {
+                    auto to_erase = inputs_reference_node.find(cluster_pin_idx_to);
+                    if (to_erase != inputs_reference_node.end()) {
+                        phy_bl_routes.erase(to_erase);
+                        continue;
+                    }
+                }
+                //if target pin is unconnected, a node for it must be created
+                if (inputs_reference_node.find(cluster_pin_idx_to) == inputs_reference_node.end()) {
+                    phy_bl_routes.insert(std::pair<int, t_pb_route>(cluster_pin_idx_to, inputs_reference_node[cluster_pin_idx_to]));
+                    continue;
+                }
+                //if both pins are connected to something, the swap can be applied
                 phy_bl_routes[cluster_pin_idx_to] = inputs_reference_node[cluster_pin_idx_from];
+            }
         }
     }
 }

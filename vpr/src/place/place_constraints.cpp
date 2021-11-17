@@ -214,14 +214,14 @@ bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc, std
         //if block is empty it is always compatible
         if(blk_id == EMPTY_BLOCK_ID) {
             map->clear();
-            return true;
-        }
-        //we need compatibility check only if flag for consideration is set
-        if (g_vpr_ctx.placement().consider_faulty_luts) {
-            floorplanning_good = check_compatibility_clb(map, lut_errors, blk_id, loc);
-        }
-        else {
             floorplanning_good = true;
+        }
+        else { //we need compatibility check only if flag for consideration is set
+            if (g_vpr_ctx.placement().consider_faulty_luts) {
+                floorplanning_good = check_compatibility_clb(map, lut_errors, blk_id, loc);
+            } else {
+                floorplanning_good = true;
+            }
         }
     } else {
         PartitionRegion pr = floorplanning_ctx.cluster_constraints[blk_id];
@@ -233,14 +233,15 @@ bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc, std
             //if block is empty it is always compatible
             if(blk_id == EMPTY_BLOCK_ID) {
                 map->clear();
-                return true;
-            }
-            //we need compatibility check only if flag for consideration is set
-            if (g_vpr_ctx.placement().consider_faulty_luts) {
-                floorplanning_good = check_compatibility_clb(map, lut_errors, blk_id, loc);
+                floorplanning_good = true;
             }
             else {
-                return true;
+                //we need compatibility check only if flag for consideration is set
+                if (g_vpr_ctx.placement().consider_faulty_luts) {
+                    floorplanning_good = check_compatibility_clb(map, lut_errors, blk_id, loc);
+                } else {
+                    floorplanning_good = true;
+                }
             }
         } else {
 #ifdef VERBOSE
@@ -483,26 +484,29 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
     auto& device_ctx = g_vpr_ctx.device();
     auto& place_ctx = g_vpr_ctx.mutable_placement();
 
-    //TODO: check if given block is a clb, otherwise it is always compatible
+    //get atoms assigned to current clb
+    const std::vector<AtomBlockId> functions = atom_ctx.lookup.clb_atom(blk_id);
+    //check if given block/destination location is a clb (contains .names/LUT or .latch/FF), otherwise it is always compatible
+    if((!pb_type_contains_blif_model(atom_ctx.lookup.atom_pb_graph_node(*functions.begin())->pb_type, ".names")) &&
+       (!pb_type_contains_blif_model(atom_ctx.lookup.atom_pb_graph_node(*functions.begin())->pb_type, ".latch")))
+        return true;
 
+    //search map of already found pairs for current mapping
     auto clb = place_ctx.compatibility_mappings.find(blk_id);
-    //search map of already found incompatible pairs for current mapping
     if (clb != place_ctx.compatibility_mappings.end()) {
         auto location = clb->second.begin();
         while (location != clb->second.end()) {
             //if map contains the clb with the same coordinates it has saved the compatibility
             if(location->first.x == loc.x && location->first.y == loc.y && location->first.sub_tile == loc.sub_tile) {
                 //if map is empty, it is incompatible
-                if(location->second.empty())
-                    return false;
+                //otherwise, assign map
                 (*map) = location->second;
+                return !location->second.empty();
             }
             ++location;
         }
     }
 
-    //get atoms assigned to current clb
-    const std::vector<AtomBlockId> functions = atom_ctx.lookup.clb_atom(blk_id);
     //get index of block belonging to destination of placement
     unsigned long position = loc.x * device_ctx.grid.width() + loc.y;
     //search for the information about the size and number of luts in the clb
@@ -590,16 +594,18 @@ int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTabl
             if(check_compatibility_lut_direct(error_line, lut_mask, num_fct_cells, cur_try))
                 return cur_try;
             else {
-                if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut, g_vpr_ctx.placement().permutation_depth)) {
-                    return cur_try;
+                if(g_vpr_ctx.placement().permutation_depth > 0)
+                    if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut, g_vpr_ctx.placement().permutation_depth)) {
+                        return cur_try;
                 }
             }
         }
         return -1;
     }
     else {
-        if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut, g_vpr_ctx.placement().permutation_depth)) {
-            return 0;
+        if(g_vpr_ctx.placement().permutation_depth > 0)
+            if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut, g_vpr_ctx.placement().permutation_depth)) {
+                return 0;
         }
         return -1;
     }
@@ -659,7 +665,7 @@ bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable&
         if(check_compatibility_lut_direct(error_line, permuted_lut_mask, num_fct_cells, 0))
             return true;
         //if there should be deeper permutations considered, try to find permutation of current state recursively
-        if(permutation_depth > 0) {
+        if(permutation_depth > 1) {
             if(try_find_permutation(error_line, table, perm, num_inputs_fct, num_fct_cells, num_inputs_lut, permutation_depth - 1))
                 return true;
         }
