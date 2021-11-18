@@ -176,10 +176,10 @@ int num_blocks;
 /*
  * Modified: This map holds all current permutations of the clbs.
  * Avoids messing up already permuted clbs with new permutations.
- * Just used after initial placement is completed.
- * Only permutations that are in the map after the placement are applied.
+ * Only used after initial placement is completed.
+ * Just permutations that are in the map after the placement are applied.
  */
-std::map<AtomBlockId, Change_Entry> final_permutations;
+std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>> final_permutations;
 
 //REMOVE:
 //std::map<ClusterBlockId, std::map<t_pl_loc, int>> redund_count;
@@ -539,7 +539,7 @@ void try_place(const t_placer_opts& placer_opts,
                                      directs, num_directs);
 
     vtr::ScopedStartFinishTimer timer("Placement");
-    final_permutations = std::map<AtomBlockId, Change_Entry>();
+    final_permutations = std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>();
     initial_placement(placer_opts.pad_loc_type,
                       placer_opts.constraints_file.c_str(), &final_permutations, lut_errors);
 
@@ -1476,27 +1476,19 @@ static e_move_result try_swap(const t_annealing_state* state,
             std_permutation.insert(std_permutation.end(), in);
         }
 
-        bool permuted;
-        //test permutations of source and target clb
+        //save permutations of source and target clb
         //do it one time for source and one time for destination clb
         for (int i = 0; i < 2; ++i) {
-            //iterate over all atoms in clb
-            for (auto & iter : permutation_maps[i]) {
-                //look if AtomBlock has a current permutation
-                if (final_permutations.find(iter.first) != final_permutations.end()) {
-                    //erase old permutation entry
-                    final_permutations.erase(iter.first);
-                }
-                permuted = false;
-                //test if permutation is applied
-                for (int entry : iter.second.permutation) {
-                    if(entry != std_permutation[i])
-                        permuted = true;
-                }
-                //if permuted, add to map, else do nothing
-                if (permuted)
-                    final_permutations.insert(std::pair<AtomBlockId , Change_Entry>(iter.first, iter.second));
+            //find the current cover saved for this cluster
+            auto tmp_entry = final_permutations.find(blocks_affected.moved_blocks[i].block_num);
+            //if it has an old cover, replace it
+            if (tmp_entry != final_permutations.end()) {
+                //erase old permutation entry
+                tmp_entry->second = permutation_maps[i];
             }
+            //if not, create a new entry
+            else
+                final_permutations.insert(std::pair<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>(blocks_affected.moved_blocks[i].block_num, permutation_maps[i]));
         }
 
         //Find all the nets affected by this swap and update the wiring costs.
@@ -3186,15 +3178,17 @@ void free_error_matrix() {
 
 /*
  * Modified: apply all permutations that are used in the final placement.
- * It is only necessary to apply the permutation for the Ports of the AtomBlocks.
+ * It is only necessary to apply the permutation for the Ports of the AtomBlocks at the intra-block routing.
  * The LUT-configurations are updated afterwards in vpr/src/base/netlist_writer.cpp if a permutation is detected.
  */
 static void apply_permutations() {
     auto& mut_atom_ctx = g_vpr_ctx.mutable_atom();
-    //iterate over all applied permutations
-    for (auto & current_permutation : final_permutations) {
-        //get associated pb of current Atom block
-        const t_pb* phys_bl = mut_atom_ctx.lookup.atom_pb(current_permutation.first);
+    auto& dev_ctx = g_vpr_ctx.device();
+    int lut_size = dev_ctx.lut_size;
+    //iterate over all applied covers
+    for (auto & current_cover : final_permutations) {
+        //get associated pb of current block
+        const t_pb* phys_bl = mut_atom_ctx.lookup.atom_pb(current_cover.second.begin()->first);
         //search for the top level pb of the atom, its netlist must be changed
         t_pb* parent = phys_bl->parent_pb;
         while (parent != nullptr) {
@@ -3203,30 +3197,38 @@ static void apply_permutations() {
         }
         //get a reference to the netlist information of the top level block
         t_pb_routes phy_bl_routes = phys_bl->pb_route;
-        //create a temporary copy of this information, so with assigning new inputs the before assigned ones are not lost.
+        //create a temporary copy of this information, so with assigning new inputs the before assigned ones are not lost
         const t_pb_routes inputs_reference_node = t_pb_routes(phys_bl->pb_route);
-        //change every input step by step
-        for (int input = 0; input < (int) current_permutation.second.permutation.size(); ++input) {
-            //get the index the inputs to be swapped have in the cluster
-            int cluster_pin_idx_from = phys_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster;
-            int cluster_pin_idx_to = phys_bl->pb_graph_node->input_pins[0][current_permutation.second.permutation[input]].pin_count_in_cluster;
-            //if swap is necessary, it is performed
-            if(cluster_pin_idx_to != cluster_pin_idx_from) {
-                //if pin that should be moved is unconnected, target must be removed from list
-                if (inputs_reference_node.find(cluster_pin_idx_from) == inputs_reference_node.end()) {
-                    auto to_erase = inputs_reference_node.find(cluster_pin_idx_to);
-                    if (to_erase != inputs_reference_node.end()) {
-                        phy_bl_routes.erase(to_erase);
+        const t_pb_graph_pin* pin_count_reference = t_pb_graph_pin(phys_bl->pb_graph_node->input_pins[0]);
+        for (auto & current_permutation : current_cover.second) {
+            //change every input step by step
+            for (int input = 0; input < lut_size; ++input) {
+                //get the index the inputs to be swapped have in the cluster
+                int cluster_pin_idx_from = (*pin_count_reference)[input].pin_count_in_cluster;
+                int offset = lut_size * current_permutation.second.lut;
+                int cluster_pin_idx_to = pin_count_reference[current_permutation.second.permutation[input]].pin_count_in_cluster % lut_size + offset;
+                //if swap is necessary, it is performed
+                if (!(cluster_pin_idx_to == cluster_pin_idx_from && cluster_pin_idx_from / lut_size == current_permutation.second.lut)) {
+                    int pin_idx_from = cluster_pin_idx_from % lut_size;
+                    //if pin that should be moved is unconnected, target must be removed from list
+                    if (inputs_reference_node.find(cluster_pin_idx_from) == inputs_reference_node.end()) {
+                        auto to_erase = inputs_reference_node.find(cluster_pin_idx_to);
+                        if (to_erase != inputs_reference_node.end()) {
+                            phy_bl_routes.erase(to_erase);
+                            phys_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster = cluster_pin_idx_to;
+                            continue;
+                        }
+                    }
+                    //if target pin is unconnected, a node for it must be created
+                    if (inputs_reference_node.find(cluster_pin_idx_to) == inputs_reference_node.end()) {
+                        phy_bl_routes.insert(std::pair<int, t_pb_route>(cluster_pin_idx_to, inputs_reference_node[cluster_pin_idx_from]));
+                        phys_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster = cluster_pin_idx_to;
                         continue;
                     }
+                    //if both pins are connected to something, the swap can be applied
+                    phy_bl_routes[cluster_pin_idx_to] = inputs_reference_node[cluster_pin_idx_from];
+                    phys_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster = cluster_pin_idx_to;
                 }
-                //if target pin is unconnected, a node for it must be created
-                if (inputs_reference_node.find(cluster_pin_idx_to) == inputs_reference_node.end()) {
-                    phy_bl_routes.insert(std::pair<int, t_pb_route>(cluster_pin_idx_to, inputs_reference_node[cluster_pin_idx_to]));
-                    continue;
-                }
-                //if both pins are connected to something, the swap can be applied
-                phy_bl_routes[cluster_pin_idx_to] = inputs_reference_node[cluster_pin_idx_from];
             }
         }
     }

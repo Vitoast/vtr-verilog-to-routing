@@ -644,7 +644,7 @@ bool check_compatibility_lut_direct(const char* error_line, std::vector<vtr::Log
 //Modified: added check if a lut becomes mappable by permutation of its inputs
 //maximum of 6-input LUTs
 bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut, int permutation_depth){
-    auto& place_ctx = g_vpr_ctx.placement();
+    auto& place_ctx = g_vpr_ctx.mutable_placement();
     auto iter = place_ctx.permutations.begin();
     //iterate over all possible permutations
     for (int cur_perm_index = 0; cur_perm_index < (int) place_ctx.permutations.size(); ++cur_perm_index) {
@@ -666,8 +666,15 @@ bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable&
             return true;
         //if there should be deeper permutations considered, try to find permutation of current state recursively
         if(permutation_depth > 1) {
-            if(try_find_permutation(error_line, table, perm, num_inputs_fct, num_fct_cells, num_inputs_lut, permutation_depth - 1))
+            //delete current permutation and save it temporarily, so it is not swapped back
+            auto perm_save = std::pair<std::basic_string<char>, Single_Swap *>(iter->first, iter->second);
+            place_ctx.permutations.erase(iter);
+            //call recursive
+            if(try_find_permutation(error_line, table, perm, num_inputs_fct, num_fct_cells, num_inputs_lut, permutation_depth - 1)) {
+                place_ctx.permutations.insert(perm_save);
                 return true;
+            }
+            place_ctx.permutations.insert(perm_save);
         }
         //reset permutation
         perm.clear();

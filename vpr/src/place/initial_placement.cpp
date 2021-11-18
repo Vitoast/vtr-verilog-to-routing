@@ -31,11 +31,11 @@ static std::vector<std::vector<std::vector<t_pl_loc>>> legal_pos; /* [0..device_
 
 static int get_free_sub_tile(std::vector<std::vector<int>>& free_locations, int itype, std::vector<int> possible_sub_tiles);
 
-static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc head_pos, std::map<AtomBlockId, Change_Entry>* map, char** lut_errors);
-static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_macro, std::map<AtomBlockId, Change_Entry>* final_perms, char** lut_errors);
-static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<std::vector<int>>& free_locations, const std::vector<t_pl_macro>& sorted_macros, std::map<AtomBlockId, Change_Entry>* final_perms, char** lut_errors);
+static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc head_pos, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors);
+static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_macro, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors);
+static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<std::vector<int>>& free_locations, const std::vector<t_pl_macro>& sorted_macros, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors);
 
-static void initial_placement_blocks(std::vector<std::vector<int>>& free_locations, enum e_pad_loc_type pad_loc_type, const std::vector<ClusterBlockId>& sorted_blocks, std::map<AtomBlockId, Change_Entry>* final_perms, char** lut_errors);
+static void initial_placement_blocks(std::vector<std::vector<int>>& free_locations, enum e_pad_loc_type pad_loc_type, const std::vector<ClusterBlockId>& sorted_blocks, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors);
 
 static t_physical_tile_type_ptr pick_placement_type(t_logical_block_type_ptr logical_block,
                                                     int num_needed_types,
@@ -83,7 +83,7 @@ static std::vector<int> get_possible_sub_tile_indices(t_physical_tile_type_ptr p
 /*
  * Modified: added handover of LUT error matrix and save of lut permutations
  */
-static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc head_pos, std::map<AtomBlockId, Change_Entry>* final_perms, char** lut_errors) {
+static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc head_pos, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors) {
     auto& device_ctx = g_vpr_ctx.device();
     auto& place_ctx = g_vpr_ctx.placement();
 
@@ -132,19 +132,10 @@ static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc he
     //if makro is placed, add the necessary permutations to the map
     if(macro_can_be_placed) {
         //save permutation of inputs
-        for (const auto& makro_perm : permutations) {
-            for (auto iter : makro_perm) {
-                bool permuted = false;
-                //exclude non permutations
-                for (int i = 0; i < (int) iter.second.permutation.size(); ++i) {
-                    if (i != iter.second.permutation[i]) {
-                        permuted = true;
-                        break;
-                    }
-                }
-                if (permuted)
-                    final_perms->insert(final_perms->end(), std::pair<AtomBlockId, Change_Entry>(iter.first, iter.second));
-            }
+        auto macro_id = pl_macro.members.begin();
+        for (const auto& macro_perm : permutations) {
+            final_perms->insert(std::pair<ClusterBlockId , std::map<AtomBlockId, Change_Entry>>(macro_id->blk_index, macro_perm));
+            ++macro_id;
         }
     }
     return (macro_can_be_placed);
@@ -153,7 +144,7 @@ static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc he
 /*
  * Modified: added handover of LUT error matrix
  */
-static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_macro, std::map<AtomBlockId, Change_Entry>* final_perms, char** lut_errors) {
+static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_macro, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors) {
     auto& place_ctx = g_vpr_ctx.mutable_placement();
 
     int macro_placed = false;
@@ -194,7 +185,7 @@ static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_mac
 /*
  * Modified: added handover of LUT error matrix
  */
-static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<std::vector<int>>& free_locations, const std::vector<t_pl_macro>& sorted_macros, std::map<AtomBlockId, Change_Entry>* final_perms, char** lut_errors) {
+static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<std::vector<int>>& free_locations, const std::vector<t_pl_macro>& sorted_macros, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors) {
     int macro_placed;
     int itype, itry, ipos, isub_tile;
     ClusterBlockId blk_id;
@@ -273,7 +264,7 @@ static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<st
  *
  * Modified: added handover of LUT error matrix, added counter to avoid looping, save permutations to global map
  */
-static void initial_placement_blocks(std::vector<std::vector<int>>& free_locations, enum e_pad_loc_type pad_loc_type, const std::vector<ClusterBlockId>& sorted_blocks, std::map<AtomBlockId, Change_Entry>* final_perms, char** lut_errors) {
+static void initial_placement_blocks(std::vector<std::vector<int>>& free_locations, enum e_pad_loc_type pad_loc_type, const std::vector<ClusterBlockId>& sorted_blocks, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors) {
     auto& cluster_ctx = g_vpr_ctx.clustering();
     auto& place_ctx = g_vpr_ctx.mutable_placement();
 
@@ -329,18 +320,7 @@ static void initial_placement_blocks(std::vector<std::vector<int>>& free_locatio
 
             if (floorplan_good) {
                 //save permutation of inputs
-                for(auto & iter : map) {
-                    bool permuted = false;
-                    //exclude non permutations
-                    for (int i = 0; i < (int) iter.second.permutation.size(); ++i) {
-                        if (i != iter.second.permutation[i]) {
-                            permuted = true;
-                            break;
-                        }
-                    }
-                    if(permuted)
-                        final_perms->insert(final_perms->end(), std::pair<AtomBlockId, Change_Entry>(iter.first, iter.second));
-                }
+                final_perms->insert(std::pair<ClusterBlockId , std::map<AtomBlockId, Change_Entry>>(blk_id, map));
 
                 place_ctx.grid_blocks[to.x][to.y].blocks[to.sub_tile] = blk_id;
                 place_ctx.grid_blocks[to.x][to.y].usage++;
@@ -488,7 +468,7 @@ void print_sorted_blocks(const std::vector<ClusterBlockId>& sorted_blocks, const
 /*
  * Modified: added handover of LUT error matrix
  */
-void initial_placement(enum e_pad_loc_type pad_loc_type, const char* constraints_file, std::map<AtomBlockId, Change_Entry>* final_perms,  char** lut_errors) {
+void initial_placement(enum e_pad_loc_type pad_loc_type, const char* constraints_file, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms,  char** lut_errors) {
     vtr::ScopedStartFinishTimer timer("Initial Placement");
 
     /* Randomly places the blocks to create an initial placement. We rely on
