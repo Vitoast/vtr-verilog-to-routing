@@ -3184,32 +3184,44 @@ void free_error_matrix() {
 static void apply_permutations() {
     auto& mut_atom_ctx = g_vpr_ctx.mutable_atom();
     auto& dev_ctx = g_vpr_ctx.device();
-    int lut_size = dev_ctx.lut_size;
+    const int lut_size = dev_ctx.lut_size;
     //iterate over all applied covers
     for (auto & current_cover : final_permutations) {
         //get associated pb of current block
-        const t_pb* phys_bl = mut_atom_ctx.lookup.atom_pb(current_cover.second.begin()->first);
-        //search for the top level pb of the atom, its netlist must be changed
-        t_pb* parent = phys_bl->parent_pb;
+        const t_pb* clb_bl = mut_atom_ctx.lookup.atom_pb(current_cover.second.begin()->first);
+        //search for the top level pb of the atom (the clb), its ble-list must be changed
+        t_pb* parent = clb_bl->parent_pb;
         while (parent != nullptr) {
-            phys_bl = parent;
-            parent = phys_bl->parent_pb;
+            clb_bl = parent;
+            parent = clb_bl->parent_pb;
         }
-        //get a reference to the netlist information of the top level block
-        t_pb_routes phy_bl_routes = phys_bl->pb_route;
-        //create a temporary copy of this information, so with assigning new inputs the before assigned ones are not lost
-        const t_pb_routes inputs_reference_node = t_pb_routes(phys_bl->pb_route);
-        const t_pb_graph_pin* pin_count_reference = t_pb_graph_pin(phys_bl->pb_graph_node->input_pins[0]);
-        for (auto & current_permutation : current_cover.second) {
+        //create a temporary copy of the old cover, so with assigning new inputs the before assigned ones are not lost
+        //const t_pb cover_reference_clb = t_pb(*clb_bl);
+        /*std::vector<t_pb_graph_pin> pin_count_reference;
+        for (int i = 0; phys_bl->pb_graph_node->total_pb_pins > i; ++i) {
+            pin_count_reference.insert(pin_count_reference.end(), phys_bl->pb_graph_node->input_pins[0][i]);
+        }*/
+        //iterate over all blocks in the clb
+        for (const auto& current_permutation : current_cover.second) {
+            //get pb of current ble
+            t_pb* ble_bl = const_cast<t_pb*>(mut_atom_ctx.lookup.atom_pb(current_permutation.first));
+            //copy graph node as reference for inputs
+            const t_pb_graph_node inputs_reference_ble = t_pb_graph_node(*ble_bl->pb_graph_node);
             //change every input step by step
             for (int input = 0; input < lut_size; ++input) {
-                //get the index the inputs to be swapped have in the cluster
-                int cluster_pin_idx_from = (*pin_count_reference)[input].pin_count_in_cluster;
+                //get pin belonging to current input
+                auto gpin = &ble_bl->pb_graph_node->input_pins[0][input];
+                //assign permuted input to new position in the inputs
+                ble_bl->pb_graph_node->input_pins[0][ble_bl->atom_pin_bit_index(gpin)] = inputs_reference_ble.input_pins[0][current_permutation.second.permutation[input]];
+                //update rotation map to know later which inputs were permuted
+                ble_bl->set_atom_pin_bit_index(gpin, current_permutation.second.permutation[input]);
+
+                /*//get the index the inputs to be swapped have in the cluster
+                int cluster_pin_idx_from = pin_count_reference[input].pin_count_in_cluster;
                 int offset = lut_size * current_permutation.second.lut;
                 int cluster_pin_idx_to = pin_count_reference[current_permutation.second.permutation[input]].pin_count_in_cluster % lut_size + offset;
                 //if swap is necessary, it is performed
                 if (!(cluster_pin_idx_to == cluster_pin_idx_from && cluster_pin_idx_from / lut_size == current_permutation.second.lut)) {
-                    int pin_idx_from = cluster_pin_idx_from % lut_size;
                     //if pin that should be moved is unconnected, target must be removed from list
                     if (inputs_reference_node.find(cluster_pin_idx_from) == inputs_reference_node.end()) {
                         auto to_erase = inputs_reference_node.find(cluster_pin_idx_to);
@@ -3228,8 +3240,15 @@ static void apply_permutations() {
                     //if both pins are connected to something, the swap can be applied
                     phy_bl_routes[cluster_pin_idx_to] = inputs_reference_node[cluster_pin_idx_from];
                     phys_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster = cluster_pin_idx_to;
-                }
+                }*/
             }
+            //delete old entry of current ble
+            for (int count = 0; count < dev_ctx.num_luts_per_clb; ++count) {
+                if (clb_bl->child_pbs[count] == ble_bl)
+                    clb_bl->child_pbs[count] = nullptr;
+            }
+            //assign ble to its new position in the cover
+            clb_bl->child_pbs[current_permutation.second.lut] = ble_bl;
         }
     }
 }
