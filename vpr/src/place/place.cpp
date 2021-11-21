@@ -3183,6 +3183,7 @@ void free_error_matrix() {
  */
 static void apply_permutations() {
     auto& mut_atom_ctx = g_vpr_ctx.mutable_atom();
+    //auto& mut_cl_ctx = g_vpr_ctx.mutable_clustering();
     auto& dev_ctx = g_vpr_ctx.device();
     const int lut_size = dev_ctx.lut_size;
     //iterate over all applied covers
@@ -3197,58 +3198,81 @@ static void apply_permutations() {
         }
         //create a temporary copy of the old cover, so with assigning new inputs the before assigned ones are not lost
         //const t_pb cover_reference_clb = t_pb(*clb_bl);
+
         /*std::vector<t_pb_graph_pin> pin_count_reference;
-        for (int i = 0; phys_bl->pb_graph_node->total_pb_pins > i; ++i) {
-            pin_count_reference.insert(pin_count_reference.end(), phys_bl->pb_graph_node->input_pins[0][i]);
+        for (int i = 0; clb_bl->pb_graph_node->total_pb_pins > i; ++i) {
+            pin_count_reference.insert(pin_count_reference.end(), clb_bl->pb_graph_node->input_pins[0][i]);
         }*/
+
+        /*for (int ble = 0; ble < dev_ctx.num_luts_per_clb; ++ble) {
+            t_pb* ble_bl = clb_bl->child_pbs[ble];
+            while (!ble_bl->is_primitive())
+                ble_bl = clb_bl->child_pbs[0];
+            for (int input = 0; input < lut_size; ++input) {
+                int cluster_idx_from = ;
+
+                cover_reference_clb.child_pbs[ble]
+            }
+        }*/
+
+
+        //delete old entry of bles
+        //for (int count = 0; count < dev_ctx.num_luts_per_clb; ++count) {
+          //  clb_bl->child_pbs[count] = nullptr;
+            //if (clb_bl->pb_graph_node->child_pb_graph_nodes[count] == &ble_bl->pb_graph_node.)
+            //  clb_bl->pb_graph_node->child_pb_graph_nodes[count] = nullptr;
+        //}
         //iterate over all blocks in the clb
         for (const auto& current_permutation : current_cover.second) {
             //get pb of current ble
             t_pb* ble_bl = const_cast<t_pb*>(mut_atom_ctx.lookup.atom_pb(current_permutation.first));
             //copy graph node as reference for inputs
-            const t_pb_graph_node inputs_reference_ble = t_pb_graph_node(*ble_bl->pb_graph_node);
+            const t_pb reference_ble = t_pb(*ble_bl);
+            //create a temporary copy of this information, so with assigning new inputs the before assigned ones are not lost.
+            //const t_pb_routes route_reference_node = t_pb_routes(clb_bl->pb_route);
             //change every input step by step
             for (int input = 0; input < lut_size; ++input) {
                 //get pin belonging to current input
-                auto gpin = &ble_bl->pb_graph_node->input_pins[0][input];
+                auto gpin = &reference_ble.pb_graph_node->input_pins[0][input];
                 //assign permuted input to new position in the inputs
-                ble_bl->pb_graph_node->input_pins[0][ble_bl->atom_pin_bit_index(gpin)] = inputs_reference_ble.input_pins[0][current_permutation.second.permutation[input]];
+                //ble_bl->pb_graph_node->input_pins[0][ble_bl->atom_pin_bit_index(gpin)] = inputs_reference_ble.input_pins[0][current_permutation.second.permutation[input]];
+
+
+                //get the index the inputs to be swapped have in the cluster
+                //int cluster_pin_idx_from = cover_reference_clb.pb_graph_node->input_pins[input]->pin_count_in_cluster;
+                int index_to = current_permutation.second.permutation[input];
+                int index_from = (int) reference_ble.atom_pin_bit_index(gpin);
+                //int offset = lut_size * current_permutation.second.lut;
+                int cluster_pin_idx_to = reference_ble.pb_graph_node->input_pins[0][index_to].pin_count_in_cluster;
                 //update rotation map to know later which inputs were permuted
                 ble_bl->set_atom_pin_bit_index(gpin, current_permutation.second.permutation[input]);
-
-                /*//get the index the inputs to be swapped have in the cluster
-                int cluster_pin_idx_from = pin_count_reference[input].pin_count_in_cluster;
-                int offset = lut_size * current_permutation.second.lut;
-                int cluster_pin_idx_to = pin_count_reference[current_permutation.second.permutation[input]].pin_count_in_cluster % lut_size + offset;
                 //if swap is necessary, it is performed
-                if (!(cluster_pin_idx_to == cluster_pin_idx_from && cluster_pin_idx_from / lut_size == current_permutation.second.lut)) {
-                    //if pin that should be moved is unconnected, target must be removed from list
+                if (index_to != index_from) { //} && cluster_pin_idx_from / lut_size == current_permutation.second.lut)) {
+                    ble_bl->pb_graph_node->input_pins[0][index_to].pin_count_in_cluster = cluster_pin_idx_to;
+
+                    /*//if pin that should be moved is unconnected, target must be removed from list
                     if (inputs_reference_node.find(cluster_pin_idx_from) == inputs_reference_node.end()) {
                         auto to_erase = inputs_reference_node.find(cluster_pin_idx_to);
                         if (to_erase != inputs_reference_node.end()) {
-                            phy_bl_routes.erase(to_erase);
-                            phys_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster = cluster_pin_idx_to;
+                            //clb_bl->pb_route.erase(to_erase);
+                            clb_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster = cluster_pin_idx_to;
                             continue;
                         }
                     }
                     //if target pin is unconnected, a node for it must be created
                     if (inputs_reference_node.find(cluster_pin_idx_to) == inputs_reference_node.end()) {
-                        phy_bl_routes.insert(std::pair<int, t_pb_route>(cluster_pin_idx_to, inputs_reference_node[cluster_pin_idx_from]));
-                        phys_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster = cluster_pin_idx_to;
+                        //clb_bl->pb_route.insert(std::pair<int, t_pb_route>(cluster_pin_idx_to, inputs_reference_node[cluster_pin_idx_from]));
+                        clb_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster = cluster_pin_idx_to;
                         continue;
                     }
                     //if both pins are connected to something, the swap can be applied
-                    phy_bl_routes[cluster_pin_idx_to] = inputs_reference_node[cluster_pin_idx_from];
-                    phys_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster = cluster_pin_idx_to;
-                }*/
-            }
-            //delete old entry of current ble
-            for (int count = 0; count < dev_ctx.num_luts_per_clb; ++count) {
-                if (clb_bl->child_pbs[count] == ble_bl)
-                    clb_bl->child_pbs[count] = nullptr;
+                    //clb_bl->pb_route[cluster_pin_idx_to] = inputs_reference_node[cluster_pin_idx_from];
+                    clb_bl->pb_graph_node->input_pins[0][input].pin_count_in_cluster = cluster_pin_idx_to;*/
+                }
             }
             //assign ble to its new position in the cover
-            clb_bl->child_pbs[current_permutation.second.lut] = ble_bl;
+            //clb_bl->child_pbs[current_permutation.second.lut] = ble_bl;
+            //clb_bl->pb_graph_node->child_pb_graph_nodes = &cover_reference_clb.pb_graph_node->child_pb_graph_nodes[current_permutation.second.lut];
         }
     }
 }
