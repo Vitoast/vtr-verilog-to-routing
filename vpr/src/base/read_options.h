@@ -150,6 +150,14 @@ struct t_options {
     argparse::ArgValue<e_reducer> place_delay_model_reducer;
     argparse::ArgValue<std::string> allowed_tiles_for_delay_model;
 
+    /* LUT-error-based Placement Options */
+    argparse::ArgValue<bool> consider_faulty_luts;
+    argparse::ArgValue<bool> generate_error_file;
+    argparse::ArgValue<double> sa1;
+    argparse::ArgValue<double> sa0;
+    argparse::ArgValue<double> sau;
+    argparse::ArgValue<int> permutation_depth;
+
     /* Router Options */
     argparse::ArgValue<bool> check_rr_graph;
     argparse::ArgValue<int> max_router_iterations;

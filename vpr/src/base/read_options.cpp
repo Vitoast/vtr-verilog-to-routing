@@ -2017,6 +2017,53 @@ argparse::ArgumentParser create_arg_parser(std::string prog_name, t_options& arg
         .default_value("")
         .show_in(argparse::ShowIn::HELP_ONLY);
 
+    //Modified: added Options to setup fault consideration for LUTs
+    place_timing_grp.add_argument(args.consider_faulty_luts, "--consider_faulty_luts")
+        .help(
+            "Enables the consideration of errors in the LUT memory cells. "
+            "Errors are stored in ’device_faults.txt’. ")
+        .default_value("false")
+        .show_in(argparse::ShowIn::HELP_ONLY);
+
+    place_timing_grp.add_argument(args.generate_error_file, "--generate_error_file")
+        .help(
+            "Enables the generation of the error file of the LUT memory cells. "
+            "Errors are stored in ’device_faults.txt’. "
+            "The errors are randomly generated with the probabilities given by the parameters. "
+            "sa1 (Stuck-At-1 error), sa0 (Stuck-At-0 error) and sau (Stuck-At-Undefined error). ")
+        .default_value("false")
+        .show_in(argparse::ShowIn::HELP_ONLY);
+
+    place_timing_grp.add_argument(args.sa1, "--sa1")
+        .help(
+            "Probability for Stuck-At-1 error. ")
+        .default_value("0.0")
+        .show_in(argparse::ShowIn::HELP_ONLY);
+
+    place_timing_grp.add_argument(args.sa0, "--sa0")
+        .help(
+            "Probability for Stuck-At-0 error. ")
+        .default_value("0.0")
+        .show_in(argparse::ShowIn::HELP_ONLY);
+
+    place_timing_grp.add_argument(args.sau, "--sau")
+        .help(
+            "Probability for Stuck-At-Undefined error. ")
+        .default_value("0.0")
+        .show_in(argparse::ShowIn::HELP_ONLY);
+
+    place_timing_grp.add_argument(args.permutation_depth, "--permutation_depth")
+        .help(
+            "This tells how deep permutations should be considered for "
+            "finding a compatible input permutation of CLB and Block while Placement. "
+            "If 0: no permutation ios applied. With each level, there are all swaps "
+            "of two inputs considered. On the next level there are also swaps of "
+            "two inputs applied recursively on the swap before. So with maximum of "
+            "depth 6 all possible swaps are considered. To avoid runtime issues "
+            "the depth should not be higher than 2.")
+        .default_value("0")
+        .show_in(argparse::ShowIn::HELP_ONLY);
+
     auto& route_grp = parser.add_argument_group("routing options");
 
     route_grp.add_argument(args.max_router_iterations, "--max_router_iterations")

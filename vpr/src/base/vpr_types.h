@@ -1023,6 +1023,18 @@ enum class e_place_delta_delay_algorithm {
  *   @param place_constraint_subtile
  *              True if subtiles should be specified when printing floorplan
  *              constraints. False if not.
+ *   Modified:
+ *   @param consider_faulty_luts
+ *              Enable consideration of memory faults in LUTs specified in device_faults.txt.
+ *   @param generate_errors
+ *              Enable the random generation of faults in LUT memory cells based on the given architecture.
+ *   @param sa1
+ *              Probability with which Stuck-At-1 faults should be generated.
+ *   @param sa0
+ *              Probability with which Stuck-At-0 faults should be generated.
+ *   @param sau
+ *              Probability with which Stuck-At-Undefined faults should be generated.
+ *
  */
 struct t_placer_opts {
     t_place_algorithm place_algorithm;
@@ -1076,6 +1088,14 @@ struct t_placer_opts {
     float place_crit_limit;
     int place_constraint_expand;
     bool place_constraint_subtile;
+
+    //added for faulty LUT-cells
+    bool consider_faulty_luts;
+    bool generate_error_file;
+    double sa1;
+    double sa0;
+    double sau;
+    int permutation_depth;
 
     /**
      * @brief Tile types that should be used during delay sampling.

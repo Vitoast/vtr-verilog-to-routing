@@ -522,6 +522,8 @@ static void SetupNetlistOpts(const t_options& Options, t_netlist_opts& NetlistOp
  *
  * Error checking, such as checking for conflicting params
  * is assumed to be done beforehand
+ *
+ * Modified: added LUT-error handover.
  */
 static void SetupPlacerOpts(const t_options& Options, t_placer_opts* PlacerOpts) {
     if (Options.do_placement) {
@@ -594,6 +596,13 @@ static void SetupPlacerOpts(const t_options& Options, t_placer_opts* PlacerOpts)
     PlacerOpts->place_agent_algorithm = Options.place_agent_algorithm;
     PlacerOpts->place_constraint_expand = Options.place_constraint_expand;
     PlacerOpts->place_constraint_subtile = Options.place_constraint_subtile;
+
+    PlacerOpts->consider_faulty_luts = Options.consider_faulty_luts;
+    PlacerOpts->generate_error_file = Options.generate_error_file;
+    PlacerOpts->sa1 = Options.sa1;
+    PlacerOpts->sa0 = Options.sa0;
+    PlacerOpts->sau = Options.sau;
+    PlacerOpts->permutation_depth = Options.permutation_depth;
 }
 
 static void SetupAnalysisOpts(const t_options& Options, t_analysis_opts& analysis_opts) {
