@@ -346,7 +346,7 @@ struct PlacementContext : public Context {
      * Holds for each possible input permutation in a LUT the connected swaps in the truth table.
      * Has information up to a 6-LUT.
      */
-     std::map<std::string, Single_Swap*> permutations;
+     std::map<std::string, std::vector<Single_Swap>> permutations;
 
      /**
       * Is true if faulty memory cells in the LUTs should be considered while placement.

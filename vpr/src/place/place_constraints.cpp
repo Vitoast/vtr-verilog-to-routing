@@ -562,8 +562,13 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
         place_ctx.compatibility_mappings.insert(std::pair<ClusterBlockId, std::vector<std::pair<t_pl_loc, std::map<AtomBlockId, Change_Entry>>>>(blk_id, vec));
     }
     //otherwise insert the new mapping-pair
-    else
+    else {
+        //hold the amount of stored mappings to an upper bound to avoid crashes of memory
+        if (clb->second.size() > 500) {
+            clb->second.erase(clb->second.begin());
+        }
         clb->second.insert(clb->second.end(), std::pair<t_pl_loc, std::map<AtomBlockId, Change_Entry>>(loc, *map));
+    }
     return coverable;
 }
 
@@ -595,7 +600,7 @@ int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTabl
                 return cur_try;
             else {
                 if(g_vpr_ctx.placement().permutation_depth > 0)
-                    if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut, g_vpr_ctx.placement().permutation_depth)) {
+                    if (try_find_permutation(error_line, lut_mask, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut, g_vpr_ctx.placement().permutation_depth)) {
                         return cur_try;
                 }
             }
@@ -604,7 +609,7 @@ int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTabl
     }
     else {
         if(g_vpr_ctx.placement().permutation_depth > 0)
-            if (try_find_permutation(error_line, exp_table, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut, g_vpr_ctx.placement().permutation_depth)) {
+            if (try_find_permutation(error_line, lut_mask, *perm, num_inputs_fct, num_fct_cells, num_inputs_lut, g_vpr_ctx.placement().permutation_depth)) {
                 return 0;
         }
         return -1;
@@ -643,7 +648,7 @@ bool check_compatibility_lut_direct(const char* error_line, std::vector<vtr::Log
 
 //Modified: added check if a lut becomes mappable by permutation of its inputs
 //maximum of 6-input LUTs
-bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut, int permutation_depth){
+bool try_find_permutation(const char* error_line, const std::vector<vtr::LogicValue>& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut, int permutation_depth){
     auto& place_ctx = g_vpr_ctx.mutable_placement();
     auto iter = place_ctx.permutations.begin();
     //iterate over all possible permutations
@@ -655,22 +660,23 @@ bool try_find_permutation(const char* error_line, const AtomNetlist::TruthTable&
         //that is the case, if the inputs the permutation uses exist in the lut
         if (!(from < num_inputs_fct && to < num_inputs_fct))
             continue;
-        //apply permutation
+       //apply swap to overall permutation
         int tmp = perm[from];
         perm[from] = perm[to];
         perm[to] = tmp;
-        AtomNetlist::TruthTable permuted_table = permute_truth_table(table, num_inputs_fct, perm);
-        std::vector<vtr::LogicValue> permuted_lut_mask = truth_table_to_lut_mask(permuted_table, num_inputs_fct);
+        //AtomNetlist::TruthTable permuted_table = permute_truth_table(table, num_inputs_fct, perm);
+        std::vector<vtr::LogicValue> permuted_lut_mask = permute_lut_mask(table, num_inputs_fct, iter->first);
         //check if permutation brings success
         if(check_compatibility_lut_direct(error_line, permuted_lut_mask, num_fct_cells, 0))
             return true;
         //if there should be deeper permutations considered, try to find permutation of current state recursively
         if(permutation_depth > 1) {
             //delete current permutation and save it temporarily, so it is not swapped back
-            auto perm_save = std::pair<std::basic_string<char>, Single_Swap *>(iter->first, iter->second);
+            auto perm_save = std::pair<std::basic_string<char>, std::vector<Single_Swap>>(iter->first, iter->second);
             place_ctx.permutations.erase(iter);
             //call recursive
-            if(try_find_permutation(error_line, table, perm, num_inputs_fct, num_fct_cells, num_inputs_lut, permutation_depth - 1)) {
+            //lut mask is always handed over in the current state of permutation, so the lookup for single input swaps can be used to compute the next step
+            if(try_find_permutation(error_line, permuted_lut_mask, perm, num_inputs_fct, num_fct_cells, num_inputs_lut, permutation_depth - 1)) {
                 place_ctx.permutations.insert(perm_save);
                 return true;
             }
@@ -733,4 +739,19 @@ bool clb_coverable(std::map<AtomBlockId, Change_Entry>* map, std::map<AtomBlockI
         }
     }
     return true;
+}
+
+//Modified: added an own implementation of the lut mask permutation to decrease runtime
+std::vector<vtr::LogicValue> permute_lut_mask(const std::vector<vtr::LogicValue>&table, int num_inputs_fct, const std::basic_string<char>& perm) {
+    auto& place_ctx = g_vpr_ctx.placement();
+    //first copy all entries of the old lut mask
+    std::vector<vtr::LogicValue> to_return = std::vector<vtr::LogicValue>(table);
+    //find the permutation that should be applied
+    auto permutation = place_ctx.permutations.find(perm);
+    //iterate over all swaps of cell entries that must be applied to implement the permutation
+    for (int i = 0; i < (int) pow(2, num_inputs_fct - 2); ++i) {
+        to_return[permutation->second[i].from] = table[permutation->second[i].to];
+        to_return[permutation->second[i].to] = table[permutation->second[i].from];
+    }
+    return to_return;
 }
