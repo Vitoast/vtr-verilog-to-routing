@@ -528,15 +528,34 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
             num_inputs_fct = num_inputs_lut;
         }
         else {
+            //subtract 1 of number of function inputs because output value is also saved in truth tables, and it is always single output
             num_inputs_fct = (int) atom_ctx.nlist.block_truth_table(fct).begin()->size() - 1;
         }
         cover.insert(cover.end(), std::pair<AtomBlockId, std::vector<Change_Entry>>(fct, std::vector<Change_Entry>()));
+        //search for all luts in the clb if the current function is mappable
         for (int lut = 0; lut < num_luts_per_clb; ++lut) {
             std::vector<int> perm = std::vector<int>(num_inputs_lut);
+            //get to the current lut belonging errors
             char* error_line = &(lut_errors[position][lut * num_luts_per_clb]);
+            std::vector<vtr::LogicValue> lut_mask;
+            //search map of expanded lut masks for already copmuted entry
+            auto found_entry = place_ctx.lut_function_masks.find(fct);
+            //if this mask was not computed yet, it is now
+            if(found_entry == place_ctx.lut_function_masks.end()) {
+                //transform the truth table into a processable minterm form
+                AtomNetlist::TruthTable exp_table = expand_truth_table(atom_ctx.nlist.block_truth_table(fct), num_inputs_fct);
+                //calculate lut mask from minterm form
+                lut_mask = truth_table_to_lut_mask(exp_table, num_inputs_fct);
+                //add mask to global map
+                place_ctx.lut_function_masks.insert(std::pair<AtomBlockId, std::vector<vtr::LogicValue>>(fct, lut_mask));
+            }
+            //if it was computed, the result is used directly
+            else {
+                lut_mask = found_entry->second;
+            }
+
             //check if current function is compatible to a LUT at the destination
-            //subtract 1 of number of function inputs because output value is also saved in truth tables, and it is always single output
-            int assigned_lut = check_compatibility_lut(error_line, atom_ctx.nlist.block_truth_table(fct),
+            int assigned_lut = check_compatibility_lut(error_line, lut_mask,
                                                        &perm, num_inputs_lut, num_inputs_fct);
             if (assigned_lut != -1) {
                 //add necessary permutation to mapping from fct to lut
@@ -563,8 +582,9 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
     }
     //otherwise insert the new mapping-pair
     else {
-        //hold the amount of stored mappings to an upper bound to avoid crashes of memory
-        if (clb->second.size() > 500) {
+        //hold the amount of stored mappings to an upper bound to avoid overuse of memory
+        //the number of a quarter of the given blocks as limit was calculated experimentally
+        if (clb->second.size() > atom_ctx.nlist.blocks().size() / 4) {
             clb->second.erase(clb->second.begin());
         }
         clb->second.insert(clb->second.end(), std::pair<t_pl_loc, std::map<AtomBlockId, Change_Entry>>(loc, *map));
@@ -573,7 +593,7 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
 }
 
 //Modified: added compatibility check for single function and LUT.
-int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTable table, std::vector<int>* perm, int num_inputs_lut, int num_inputs_fct) {
+int check_compatibility_lut(const char* error_line, const std::vector<vtr::LogicValue> lut_mask, std::vector<int>* perm, int num_inputs_lut, int num_inputs_fct) {
     //if function requires more inputs than LUT has, its incompatible
     if(num_inputs_fct > num_inputs_lut)
         return -1;
@@ -582,9 +602,6 @@ int check_compatibility_lut(const char* error_line, const AtomNetlist::TruthTabl
     for (int in = 0; in < num_inputs_lut; ++in) {
         perm->insert(perm->end(), in);
     }
-    //transform the truth table into a processable minterm form
-    AtomNetlist::TruthTable exp_table = expand_truth_table(table, num_inputs_fct);
-    std::vector<vtr::LogicValue> lut_mask = truth_table_to_lut_mask(exp_table, num_inputs_fct);
     //get the number of cells in the lut
     int num_lut_cells = (int) pow(2, num_inputs_lut);
     int num_fct_cells = (int) pow(2, num_inputs_fct);

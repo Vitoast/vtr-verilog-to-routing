@@ -266,12 +266,13 @@ static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<st
  */
 static void initial_placement_blocks(std::vector<std::vector<int>>& free_locations, enum e_pad_loc_type pad_loc_type, const std::vector<ClusterBlockId>& sorted_blocks, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors) {
     auto& cluster_ctx = g_vpr_ctx.clustering();
+    auto& atom_ctx = g_vpr_ctx.atom();
     auto& place_ctx = g_vpr_ctx.mutable_placement();
 
     for (auto blk_id : sorted_blocks) {
         bool placed = false;
         //decreasing counter to avoid infinite loop while search with a totally incompatible block
-        int countdown = 100;
+        int countdown = (int) atom_ctx.nlist.blocks().size();
         while (!placed && countdown != 0) {
             /* -1 is a sentinel for a non-placed block, which the code in this routine will choose a location for.
              * If the x value is not -1, we assume something else has already placed this block and we should leave it there.

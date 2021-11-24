@@ -345,11 +345,15 @@ struct PlacementContext : public Context {
     /**
      * Holds for each possible input permutation in a LUT the connected swaps in the truth table.
      * Has information up to a 6-LUT.
+     *
+     * Modified: added
      */
      std::map<std::string, std::vector<Single_Swap>> permutations;
 
      /**
       * Is true if faulty memory cells in the LUTs should be considered while placement.
+      *
+      * Modified: added
       */
       bool consider_faulty_luts;
 
@@ -358,13 +362,25 @@ struct PlacementContext : public Context {
        * If it is 0, only 2 inputs are permuted.
        * If it is 1, then possibly 2-4.
        * And so on.
+       *
+       * Modified: added
        */
        int permutation_depth;
 
        /**
         * This saves all not compatible CLB Function pairs that occur to avoid double computation.
+        *
+        * Modified: added
         */
        std::map<ClusterBlockId, std::vector<std::pair<t_pl_loc, std::map<AtomBlockId, Change_Entry>>>> compatibility_mappings;
+
+       /**
+        * Saves the minterm versions of the truth tables belonging to the atom blocks.
+        * Helps to avoid runtime issues by calculating these masks over and over again.
+        *
+        * Modified: added
+        */
+        std::map<AtomBlockId, std::vector<vtr::LogicValue>> lut_function_masks;
 };
 
 /**

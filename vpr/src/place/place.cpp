@@ -1470,12 +1470,6 @@ static e_move_result try_swap(const t_annealing_state* state,
         apply_move_blocks(blocks_affected);
 
         //Modified: Add permutations to local map
-        //get a reference to know if no permutation was applied
-        std::vector<int> std_permutation = std::vector<int>();
-        for (int in = 0; in < (int) permutation_maps[0].begin()->second.permutation.size(); ++in) {
-            std_permutation.insert(std_permutation.end(), in);
-        }
-
         //save permutations of source and target clb
         //do it one time for source and one time for destination clb
         for (int i = 0; i < 2; ++i) {
