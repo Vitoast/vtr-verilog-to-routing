@@ -145,6 +145,6 @@ int check_compatibility_lut(const char* error_line, std::vector<vtr::LogicValue>
 bool check_compatibility_lut_direct(const char* error_line, std::vector<vtr::LogicValue> lut_mask, int num_fct_cells, int lut_offset);
 bool try_find_permutation(const char* error_line, const std::vector<vtr::LogicValue>& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut, int permutation_depth);
 bool clb_coverable(std::map<AtomBlockId, Change_Entry>* map, std::map<AtomBlockId, std::vector<Change_Entry>>* cover);
-std::vector<vtr::LogicValue> permute_lut_mask(const std::vector<vtr::LogicValue>&table, int num_inputs_fct, const std::basic_string<char>& perm);
+std::vector<vtr::LogicValue> permute_lut_mask(const std::vector<vtr::LogicValue>&table, int num_inputs_fct, int perm);
 
 #endif /* VPR_SRC_PLACE_PLACE_CONSTRAINTS_H_ */

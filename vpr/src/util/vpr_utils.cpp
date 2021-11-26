@@ -2029,7 +2029,7 @@ void init_lut_permutations() {
     auto& mut_place_ctx = g_vpr_ctx.mutable_placement();
     int num_perms = 15;
 
-    const std::string perms[15] = {"01", "02", "03", "04", "05", "12", "13", "14", "15", "23", "24", "25", "34", "35", "45"};
+    const int perms[15] = {01, 02, 03, 04, 05, 12, 13, 14, 15, 23, 24, 25, 34, 35, 45};
 
     std::vector<std::vector<Single_Swap>> swaps =
         {/*01*/{Single_Swap(1,2), Single_Swap(5,6), Single_Swap(9,10), Single_Swap(13,14), Single_Swap(17,18), Single_Swap(21,22), Single_Swap(25,26), Single_Swap(29,30),
@@ -2064,6 +2064,6 @@ void init_lut_permutations() {
                  Single_Swap(24,40), Single_Swap(25,41), Single_Swap(26,42), Single_Swap(27,43), Single_Swap(28,44), Single_Swap(29,45), Single_Swap(30,46), Single_Swap(31,47)}};
 
     for (int i = 0; i < num_perms; ++i) {
-        mut_place_ctx.permutations.insert(std::pair<std::string, std::vector<Single_Swap>>(perms[i], swaps[i]));
+        mut_place_ctx.permutations.insert(std::pair<int, std::vector<Single_Swap>>(perms[i], swaps[i]));
     }
 }

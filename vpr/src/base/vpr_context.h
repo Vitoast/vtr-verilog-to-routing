@@ -348,7 +348,7 @@ struct PlacementContext : public Context {
      *
      * Modified: added
      */
-     std::map<std::string, std::vector<Single_Swap>> permutations;
+     std::map<int, std::vector<Single_Swap>> permutations;
 
      /**
       * Is true if faulty memory cells in the LUTs should be considered while placement.
