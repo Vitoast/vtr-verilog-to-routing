@@ -1,3 +1,5 @@
+#start this task with ’python run_vtr_task.py -j 11 fault_tolerance’
+
 # Path to directory of circuits to use
 circuits_dir=benchmarks/blif/6
 
@@ -64,7 +66,7 @@ circuit_list_add=daio-rec.blif
 circuit_list_add=dalu.blif
 circuit_list_add=decod.blif
 circuit_list_add=des.blif
-circuit_list_add=diffreq.blif
+circuit_list_add=diffeq.blif
 circuit_list_add=dk14.blif
 circuit_list_add=dk15.blif
 circuit_list_add=dk16.blif
@@ -161,7 +163,7 @@ circuit_list_add=s838.blif
 circuit_list_add=s953.blif
 circuit_list_add=s1196.blif
 circuit_list_add=s1238.blif
-circuit_list_add=s1432.blif
+circuit_list_add=s1423.blif
 circuit_list_add=s1488.blif
 circuit_list_add=s1494.blif
 circuit_list_add=s5378.blif
@@ -208,5 +210,15 @@ arch_list_add=soft_fpu_arch_timing_fixed_size.xml
 # Parse info and how to parse
 parse_file=vpr_standard.txt
 
-# initiate the param combinations that should be used
-script_params_list_add=--consider_faulty_luts true --generate_errors true --sa1 0.33 --sa0 0.33 --sau 0.33 --permutation_depth 1
+# initiate the param combinations that should be used (0% to 10% error sweep, step 1%)
+script_params_list_add=-starting_stage vpr --consider_faulty_luts false --generate_error_file false
+script_params_list_add=-starting_stage vpr --consider_faulty_luts true --generate_error_file true --sa1 0.0033 --sa0 0.0033 --sau 0.0033 --permutation_depth 1
+script_params_list_add=-starting_stage vpr --consider_faulty_luts true --generate_error_file true --sa1 0.0067 --sa0 0.0067 --sau 0.0067 --permutation_depth 1
+script_params_list_add=-starting_stage vpr --consider_faulty_luts true --generate_error_file true --sa1 0.01 --sa0 0.01 --sau 0.01 --permutation_depth 1
+script_params_list_add=-starting_stage vpr --consider_faulty_luts true --generate_error_file true --sa1 0.0133 --sa0 0.0133 --sau 0.0133 --permutation_depth 1
+script_params_list_add=-starting_stage vpr --consider_faulty_luts true --generate_error_file true --sa1 0.0167 --sa0 0.0167 --sau 0.0167 --permutation_depth 1
+script_params_list_add=-starting_stage vpr --consider_faulty_luts true --generate_error_file true --sa1 0.02 --sa0 0.02 --sau 0.02 --permutation_depth 1
+script_params_list_add=-starting_stage vpr --consider_faulty_luts true --generate_error_file true --sa1 0.0233 --sa0 0.0233 --sau 0.0233 --permutation_depth 1
+script_params_list_add=-starting_stage vpr --consider_faulty_luts true --generate_error_file true --sa1 0.0267 --sa0 0.0267 --sau 0.0267 --permutation_depth 1
+script_params_list_add=-starting_stage vpr --consider_faulty_luts true --generate_error_file true --sa1 0.03 --sa0 0.03 --sau 0.03 --permutation_depth 1
+script_params_list_add=-starting_stage vpr --consider_faulty_luts true --generate_error_file true --sa1 0.0333 --sa0 0.0333 --sau 0.0333 --permutation_depth 1
