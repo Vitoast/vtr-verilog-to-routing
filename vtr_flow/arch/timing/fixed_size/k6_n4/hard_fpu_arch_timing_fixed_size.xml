@@ -76,7 +76,7 @@
   <!-- ODIN II specific config ends -->
   <!-- Physical descriptions begin (area optimized for N8-K6-L4 -->
   <layout>
-    <fixed_layout name="7A12T" width="40" height="50">
+    <fixed_layout name="7A12T" width="50" height="65">
       <!--Perimeter of 'io' blocks with 'EMPTY' blocks at corners-->
       <perimeter type="io" priority="100"/>
       <corners type="EMPTY" priority="101"/>

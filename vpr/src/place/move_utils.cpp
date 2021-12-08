@@ -867,6 +867,7 @@ bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type,
                 //check if the blocks assigned to the location of the swap can be assigned to the other one
                 t_pl_loc to_loc = t_pl_loc();
                 t_pl_loc from_loc = t_pl_loc();
+                //calculate actual positions from compressed positions
                 compressed_grid_to_loc(type, cx_to, cy_to, to_loc);
                 compressed_grid_to_loc(type, cx_from, cy_from, from_loc);
                 auto& place_ctx = g_vpr_ctx.placement();
@@ -876,7 +877,7 @@ bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type,
                 if (blk_id == EMPTY_BLOCK_ID || !g_vpr_ctx.placement().consider_faulty_luts) {
                     return true;
                 }
-                //check if source block is compatible ro destination location
+                //check if source block is compatible to destination location
                 legal = check_compatibility_clb(&((*permutation_maps)[0]), lut_errors, blk_id, to_loc);
                 //check if destination block is compatible with source location
                 if(legal) {

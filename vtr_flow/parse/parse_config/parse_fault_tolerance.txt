@@ -1,0 +1,12 @@
+#author: Vincent Tobias Steinbach
+#this file is used to configure the parsing of the relevant information out of the evaluation
+
+#Metrics for the standard VTR flow
+#%include "common/vtr_flow.txt"
+
+#Information important for evaluation
+num_clb;vpr.out;Netlist clb blocks:\s*(\d+)
+vpr_status;output.txt;vpr_status=(.*)
+critical_path_delay;vpr.crit_path.out;Final critical path delay \(least slack\): (.*) ns
+
+

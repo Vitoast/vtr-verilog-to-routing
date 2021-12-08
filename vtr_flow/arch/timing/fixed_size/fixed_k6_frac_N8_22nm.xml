@@ -132,7 +132,7 @@ Scaling assumptions from 40nm to 22nm: delay constant area drop (22/40)^2 but si
   <!-- ODIN II specific config ends -->
   <!-- Physical descriptions begin -->
   <layout>
-    <fixed_layout name="unnamed_device" width="17" height="17">
+    <fixed_layout name="unnamed_device" width="40" height="40">
       <!--Perimeter of 'io' blocks with 'EMPTY' blocks at corners-->
       <perimeter type="io" priority="100"/>
       <corners type="EMPTY" priority="101"/>

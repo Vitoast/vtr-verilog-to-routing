@@ -515,6 +515,8 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
 
     //check compatibility for each function in clb
     int num_inputs_fct;
+    //tells if clb has only latches as functions
+    bool is_only_latch = true;
     for (auto fct : functions) {
         //if current truth table has only one entry it is a latch that can always be mapped and needs no consideration
         if(atom_ctx.nlist.block_truth_table(fct).size() == 1) {
@@ -522,6 +524,7 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
                 continue;
             }
         }
+        is_only_latch = false;
         //if current function is always 1 or 0 the truthtable could be empty depending if it is on- or off-set encoded
         //this case must be handled specially
         if(atom_ctx.nlist.block_truth_table(fct).empty()) {
@@ -568,6 +571,9 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
             return false;
         }
     }
+    //if clb contains only latches it is compatible
+    if(is_only_latch)
+        return true;
     //check if a cover from luts and fcts exist and get the necessary permutations
     bool coverable = clb_coverable(map, &cover);
     //empty map symbolizes incompatibility
