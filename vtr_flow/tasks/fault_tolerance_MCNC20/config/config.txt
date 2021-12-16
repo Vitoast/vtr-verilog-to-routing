@@ -213,7 +213,7 @@ arch_list_add=soft_fpu_arch_timing_fixed_size.xml
 # Parse info and how to parse
 parse_file=parse_fault_tolerance.txt
 
-# initiate the param combinations that should be used (0% to 10% error sweep, step 1%)
+# initiate the param combinations that should be used (0% to 10% error sweep, step 1%, each with permutation depth 0, 1 and 2)
 script_params_list_add=-starting_stage vpr --consider_faulty_luts false --generate_error_file false
 
 script_params_list_add=-starting_stage vpr --consider_faulty_luts true --generate_error_file true --sa1 0.0033 --sa0 0.0033 --sau 0.0033 --permutation_depth 0

@@ -8,6 +8,8 @@
  * 1.  libarchfpga/physical_types.h - Data structures that define the properties of the FPGA architecture
  * 2.  vpr_types.h - Very major file that defines the core data structures used in VPR.  This includes detailed architecture information, user netlist data structures, and data structures that describe the mapping between those two.
  * 3.  globals.h - Defines the global variables used by VPR.
+ *
+ * Modified: VPR by Vincent Tobias Steinbach in terms of the Bachelor-Thesis 'Implementierung eines fehler-toleranten Technology Mapping-Verfahrens in VPR'.
  */
 
 #include <cstdio>

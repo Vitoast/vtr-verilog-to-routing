@@ -4,7 +4,7 @@
 #include "math.h"
 #include "place_constraints.h"
 
-//Modified: added handover of LUT error matrix
+//Modified: added handover of LUT error matrix and permutation maps
 e_create_move FeasibleRegionMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities, std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors) {
     auto& place_ctx = g_vpr_ctx.placement();
     auto& cluster_ctx = g_vpr_ctx.clustering();

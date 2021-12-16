@@ -81,7 +81,7 @@ static std::vector<int> get_possible_sub_tile_indices(t_physical_tile_type_ptr p
 }
 
 /*
- * Modified: added handover of LUT error matrix and save of lut permutations
+ * Modified: added handover of LUT error matrix and permutation-map to save of lut permutations
  */
 static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc head_pos, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors) {
     auto& device_ctx = g_vpr_ctx.device();
@@ -142,7 +142,7 @@ static int check_macro_can_be_placed(t_pl_macro pl_macro, int itype, t_pl_loc he
 }
 
 /*
- * Modified: added handover of LUT error matrix
+ * Modified: added handover of LUT error matrix and final permutations
  */
 static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_macro, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors) {
     auto& place_ctx = g_vpr_ctx.mutable_placement();
@@ -183,7 +183,7 @@ static int try_place_macro(int itype, int ipos, int isub_tile, t_pl_macro pl_mac
 }
 
 /*
- * Modified: added handover of LUT error matrix
+ * Modified: added handover of LUT error matrix and final-permutation-map
  */
 static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<std::vector<int>>& free_locations, const std::vector<t_pl_macro>& sorted_macros, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors) {
     int macro_placed;
@@ -262,7 +262,7 @@ static void initial_placement_pl_macros(int macros_max_num_tries, std::vector<st
 /* Place blocks that are NOT a part of any macro.
  * We'll randomly place each block in the clustered netlist, one by one.
  *
- * Modified: added handover of LUT error matrix, added counter to avoid looping, save permutations to global map
+ * Modified: added handover of LUT error matrix and permutation-map, added counter to avoid looping, save permutations to handed global map
  */
 static void initial_placement_blocks(std::vector<std::vector<int>>& free_locations, enum e_pad_loc_type pad_loc_type, const std::vector<ClusterBlockId>& sorted_blocks, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms, char** lut_errors) {
     auto& cluster_ctx = g_vpr_ctx.clustering();
@@ -270,7 +270,7 @@ static void initial_placement_blocks(std::vector<std::vector<int>>& free_locatio
 
     for (auto blk_id : sorted_blocks) {
         bool placed = false;
-        //decreasing counter to avoid infinite loop while search with a totally incompatible block
+        //decreasing counter to avoid infinite loop while search for a totally incompatible block
         int countdown = (int) cluster_ctx.clb_nlist.blocks().size();
         while (!placed && countdown != 0) {
             /* -1 is a sentinel for a non-placed block, which the code in this routine will choose a location for.
@@ -466,7 +466,7 @@ void print_sorted_blocks(const std::vector<ClusterBlockId>& sorted_blocks, const
 }
 
 /*
- * Modified: added handover of LUT error matrix
+ * Modified: added handover of LUT error matrix and final permutations
  */
 void initial_placement(enum e_pad_loc_type pad_loc_type, const char* constraints_file, std::map<ClusterBlockId, std::map<AtomBlockId, Change_Entry>>* final_perms,  char** lut_errors) {
     vtr::ScopedStartFinishTimer timer("Initial Placement");

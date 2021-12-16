@@ -8,7 +8,7 @@ static bool get_bb_incrementally(ClusterNetId net_id, t_bb* bb_coord_new, int xo
 
 static void get_bb_from_scratch_excluding_block(ClusterNetId net_id, t_bb* bb_coord_new, ClusterBlockId block_id, bool& skip_net);
 
-//Modified: added handover of LUT error matrix
+//Modified: added handover of LUT error matrix and final-permutations-map
 e_create_move MedianMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* /*criticalities*/, std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors) {
     auto& place_ctx = g_vpr_ctx.placement();
     auto& cluster_ctx = g_vpr_ctx.clustering();

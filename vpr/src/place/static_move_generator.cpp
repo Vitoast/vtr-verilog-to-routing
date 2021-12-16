@@ -26,6 +26,7 @@ void StaticMoveGenerator::initialize_move_prob(const std::vector<float>& prob) {
     total_prob = cumm_move_probs[cumm_move_probs.size() - 1];
 }
 
+//Modified: added handover of lut-errors and permutaiton-map
 e_create_move StaticMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& move_type, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities, std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors) {
     float rand_num = vtr::frand() * total_prob;
     for (size_t i = 0; i < cumm_move_probs.size(); i++) {

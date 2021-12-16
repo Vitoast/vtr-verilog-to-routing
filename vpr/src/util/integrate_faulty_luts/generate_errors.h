@@ -1,6 +1,7 @@
 //
-// Created by Tobias Steinbach
+// Author: Vincent Tobias Steinbach
 //
+// Modified:
 // This file is used to generate a fault-LUT-cell file from the current architecture.
 // In the file for each cell in a LUT a code is saved. (0: Fault-Free, 1: Stuck-At-1, 2:Stuck-At-0, 3:Stuck-At-Undefined)
 // The cell of the CLBs are seperated in lines.
@@ -10,7 +11,7 @@
 #define VTR_VERILOG_TO_ROUTING_GENERATE_ERRORS_H
 
 /**
- * Modified: Added struct to handle information about possibly necessary input permutations in a LUT.
+ * Added struct to handle information about possibly necessary input permutations in a LUT.
  * Definition was outlined here to avoid messing up the imports.
  */
 struct Change_Entry {
@@ -30,6 +31,14 @@ void generate_device_faults(double sa0,
                             double sa1,
                             double sau);
 
+/*
+ * Gets the information about the size of clbs and luts of current device.
+ */
+void get_clb_information();
+
+/*
+ * Loads the information about the LUT-errors from file "device_faults.txt".
+ */
 void read_lut_error_information(char*** lut_errors, int* num_clbs);
 
 #endif //VTR_VERILOG_TO_ROUTING_GENERATE_ERRORS_H

@@ -530,7 +530,7 @@ ClusterBlockId pick_from_block() {
     return ClusterBlockId::INVALID();
 }
 
-//Modified: added handover of LUT error matrix
+//Modified: added handover of LUT error matrix and permutation-map
 bool find_to_loc_uniform(t_logical_block_type_ptr type,
                          float rlim,
                          const t_pl_loc from,
@@ -602,7 +602,7 @@ void set_placer_breakpoint_reached(bool flag) {
     f_placer_breakpoint_reached = flag;
 }
 
-//Modified: added handover of LUT error matrix
+//Modified: added handover of LUT error matrix and permutation map
 bool find_to_loc_median(t_logical_block_type_ptr blk_type,
                         const t_pl_loc& from_loc,
                         const t_bb* limit_coords,
@@ -660,7 +660,7 @@ bool find_to_loc_median(t_logical_block_type_ptr blk_type,
     return true;
 }
 
-//Modified: added handover of LUT error matrix
+//Modified: added handover of LUT error matrix and permutation map
 bool find_to_loc_centroid(t_logical_block_type_ptr blk_type,
                           const t_pl_loc& from_loc,
                           const t_pl_loc& centroid,
@@ -771,7 +771,7 @@ void compressed_grid_to_loc(t_logical_block_type_ptr blk_type, int cx, int cy, t
     to_loc.sub_tile = compatible_sub_tiles[vtr::irand((int)compatible_sub_tiles.size() - 1)];
 }
 
-//Modified: added handover of LUT error matrix and permutation maps, added compatibility check for clb and cluster
+//Modified: added handover of LUT error matrix and permutation maps, added compatibility-check for clb and cluster
 bool find_compatible_compressed_loc_in_range(t_logical_block_type_ptr type,
                                              int min_cx,
                                              int max_cx,

@@ -12,10 +12,11 @@
 #include "place_constraints.h"
 #include "place_util.h"
 
-/*checks that each block's location is compatible with its floorplanning constraints if it has any
+/*
+ * checks that each block's location is compatible with its floorplanning constraints if it has any
  *
  * Modified: added handover and consideration of LUT error matrix
- * */
+ */
 int check_placement_floorplanning(char** lut_errors) {
     int error = 0;
     auto& cluster_ctx = g_vpr_ctx.clustering();
@@ -200,7 +201,7 @@ void propagate_place_constraints() {
  * Even if the block passed in is from a macro, it will work because of the constraints
  * propagation that was done during initial placement.
  *
- * Modified: added handover of LUT error matrix
+ * Modified: added handover of LUT error matrix and map for permutation
  */
 bool cluster_floorplanning_legal(ClusterBlockId blk_id, const t_pl_loc& loc, std::map<AtomBlockId, Change_Entry>* map, char** lut_errors) {
     auto& floorplanning_ctx = g_vpr_ctx.floorplanning();
@@ -586,7 +587,7 @@ bool check_compatibility_clb(std::map<AtomBlockId, Change_Entry>* map, char** lu
         vec.insert(vec.end(), std::pair<t_pl_loc, std::map<AtomBlockId, Change_Entry>>(loc, *map));
         place_ctx.compatibility_mappings.insert(std::pair<ClusterBlockId, std::vector<std::pair<t_pl_loc, std::map<AtomBlockId, Change_Entry>>>>(blk_id, vec));
     }
-    //otherwise insert the new mapping-pair
+    //otherwise, insert the new mapping-pair
     else {
         //hold the amount of stored mappings to an upper bound to avoid overuse of memory
         //the number of a quarter of the given blocks as limit was calculated experimentally
@@ -618,6 +619,7 @@ int check_compatibility_lut(const char* error_line, const std::vector<vtr::Logic
     //if function needs fewer inputs than lut provides, there are more than one position where the lut can hold it
     if (num_inputs_fct < num_inputs_lut) {
         int num_tries = num_lut_cells / (int) lut_mask.size();
+        //iterate over the possible positions where the lut can hold the function, here called 'try'
         for (int cur_try = 1; cur_try < num_tries; ++cur_try) {
             if(check_compatibility_lut_direct(error_line, lut_mask, num_fct_cells, cur_try))
                 return cur_try;
@@ -670,7 +672,7 @@ bool check_compatibility_lut_direct(const char* error_line, std::vector<vtr::Log
 }
 
 //Modified: added check if a lut becomes mappable by permutation of its inputs
-//maximum of 6-input LUTs
+//Precondition: maximum of 6-input LUTs
 bool try_find_permutation(const char* error_line, const std::vector<vtr::LogicValue>& table, std::vector<int>& perm, int num_inputs_fct, int num_fct_cells, int num_inputs_lut, int permutation_depth){
     auto& place_ctx = g_vpr_ctx.mutable_placement();
     //iterate over all possible permutations
@@ -709,6 +711,7 @@ bool try_find_permutation(const char* error_line, const std::vector<vtr::LogicVa
 
 //Modified: added greedy-approach-based check if the clb can cover all the functions of the cluster at once.
 bool clb_coverable(std::map<AtomBlockId, Change_Entry>* map, std::map<AtomBlockId, std::vector<Change_Entry>>* cover) {
+    //if no functions have compatible positions, clb is not compatible
     if (cover->empty())
         return false;
     AtomBlockId min_fct;
@@ -724,7 +727,7 @@ bool clb_coverable(std::map<AtomBlockId, Change_Entry>* map, std::map<AtomBlockI
             }
             ++cur_fct;
         }
-        //if map with compatible luts is empty, function cannot be mapped and clb is not compatible.
+        //if map with compatible luts is empty, function cannot be mapped and clb is not compatible
         if(cover->find(min_fct)->second.empty())
             return false;
         else {
@@ -737,7 +740,7 @@ bool clb_coverable(std::map<AtomBlockId, Change_Entry>* map, std::map<AtomBlockI
             //delete mapped function from cover
             cover->erase(cover->find(min_fct));
             cur_fct = cover->begin();
-            //iterate over rest functions and delete all entries that would map to the already assigned LUT.
+            //iterate over rest functions and delete all entries that would map to the already assigned LUT
             while (cur_fct != cover->end()) {
                 auto cur_lut = cur_fct->second.begin();
                 while (cur_lut != cur_fct->second.end()) {

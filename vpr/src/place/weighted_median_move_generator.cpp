@@ -8,7 +8,7 @@
 
 static void get_bb_cost_for_net_excluding_block(ClusterNetId net_id, ClusterBlockId block_id, ClusterPinId moving_pin_id, const PlacerCriticalities* criticalities, t_bb_cost* coords, bool& skip_net);
 
-//Modified: added handover of LUT error matrix
+//Modified: added handover of LUT error matrix and permutation-map
 e_create_move WeightedMedianMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& placer_opts, const PlacerCriticalities* criticalities, std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors) {
     auto& place_ctx = g_vpr_ctx.placement();
     auto& cluster_ctx = g_vpr_ctx.clustering();

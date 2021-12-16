@@ -2,7 +2,7 @@
 #include "globals.h"
 #include "place_constraints.h"
 
-//Modified: added handover of LUT error matrix
+//Modified: added handover of LUT error matrix and permutation-map
 e_create_move UniformMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float rlim, const t_placer_opts& /*placer_opts*/, const PlacerCriticalities* /*criticalities*/, std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors) {
     /* Pick a random block to be swapped with another random block.   */
     ClusterBlockId b_from = pick_from_block();

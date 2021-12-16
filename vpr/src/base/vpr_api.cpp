@@ -380,7 +380,9 @@ bool vpr_flow(t_vpr_setup& vpr_setup, t_arch& arch) {
     vpr_create_device(vpr_setup, arch);
     vpr_init_graphics(vpr_setup, arch);
 
-    //error generation enabled
+    //error generation enabled: save to dev_ctx and do generation
+    auto& dev_ctx = g_vpr_ctx.mutable_device();
+    dev_ctx.generate_errors_random = vpr_setup.PlacerOpts.generate_error_file;
     if(vpr_setup.PlacerOpts.generate_error_file) {
         double sa1 = vpr_setup.PlacerOpts.sa1;
         double sa0 = vpr_setup.PlacerOpts.sa0;
@@ -629,6 +631,7 @@ void vpr_load_packing(t_vpr_setup& vpr_setup, const t_arch& arch) {
     }
 }
 
+//Modified: save error-consideration parameters from run to PlacementContext
 bool vpr_place_flow(t_vpr_setup& vpr_setup, const t_arch& arch) {
     VTR_LOG("\n");
     const auto& placer_opts = vpr_setup.PlacerOpts;

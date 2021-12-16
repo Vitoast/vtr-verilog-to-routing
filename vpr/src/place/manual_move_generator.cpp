@@ -13,6 +13,7 @@
 #endif //NO_GRAPHICS
 
 //Manual Move Generator function
+//Modified: added handover of lut_error matrix and permutation-map, although it is not used with manual moves to match MoveGenerator interface
 e_create_move ManualMoveGenerator::propose_move(t_pl_blocks_to_be_moved& blocks_affected, e_move_type& /*move_type*/, float /*rlim*/, const t_placer_opts& /*placer_opts*/, const PlacerCriticalities* /*criticalities*/, std::vector<std::map<AtomBlockId, Change_Entry>>* permutation_maps, char** lut_errors) {
     int block_id = -1;
     t_pl_loc to;

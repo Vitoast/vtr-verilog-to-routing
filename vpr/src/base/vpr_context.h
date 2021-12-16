@@ -139,10 +139,11 @@ struct DeviceContext : public Context {
     bool has_multiple_equivalent_tiles;
 
     /**
-     * variables needed for error-considering placement.
+     * Modified: added variables needed for error-considering placement.
      */
     int num_luts_per_clb;
     int lut_size;
+    bool generate_errors_random;
 
     /*******************************************************************
      * Routing related
@@ -296,7 +297,10 @@ struct ClusteringContext : public Context {
     std::map<ClusterBlockId, std::map<int, int>> pre_routing_net_pin_mapping;
 };
 
-//helping struct to save positions of a single swap of lut-cells
+/**
+ * Modified: Helping struct to save positions of a single swap of lut-cells.
+ * Used while error-considering Placement.
+ */
 struct Single_Swap {
 
     int from;

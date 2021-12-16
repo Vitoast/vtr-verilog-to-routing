@@ -169,6 +169,8 @@ std::unique_ptr<FILE, decltype(&vtr::fclose)> f_move_stats_file(nullptr,
 /*
  * Modified: This 2D-Array holds information about the error status of each LUT-memory-cell.
  * 0 means fault-free, 1 stuck-at-1, 2 stuck-at-0 and 3 stuck-at-undefined.
+ *
+ * num_blocks holds the number of blocks in the device-grid.
  */
 char** lut_errors;
 int num_blocks;
